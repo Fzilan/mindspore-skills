@@ -146,6 +146,12 @@ Update these files to register the model:
   - `mindone/mindone/transformers/models/{model_name}/__init__.py`
   - `mindone/mindone/transformers/models/__init__.py`
   - `mindone/mindone/transformers/__init__.py`
+- Update `mindone/mindone/transformers/models/{model_name}/__init__.py`:
+  - Do not remove the file header comment at the top; preserve it exactly.
+  - After the header, allow zero or more lines that match the import form: from .<module> import *
+  - All other non-header lines must be removed
+  - For each retained import line, verify that the module exists in the same directory
+  - If a referenced module does not exist, drop that import line
 
 Tip: use HF auto files as a reference to insert in the correct order.
 
