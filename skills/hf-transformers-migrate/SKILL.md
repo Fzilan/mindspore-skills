@@ -118,14 +118,12 @@ def _dynamic_frequency_update(self, position_ids):
 - Keep config/tokenizer imports from HF `transformers`.
 - Use `mindone.transformers.modeling_utils` for modeling utilities.
 - Remove unused or PyTorch-only imports that are not migrated. This avoids false positives later.
-- Remove decorators, likes:
-  - `@torch.jit.script` - PyTorch-specific
-  - `@auto_docstring` - do not migrate and use
-- Remove kernel hub decorators belows as we use mindspore local implementation:
+- Remove decorators only if they are not defined in `mindone.transformers`, likes:
+  - `@deprecate_kwarg`
+  - `@auto_docstring`
+  - `@torch.jit.script`
   - `@use_kernel_func_from_hub`
-  - `@use_kernelized_func`
-  - `@use_kernel_forward_from_hub`
-- If a decorator is not migrated, delete both its import and usage.
+- If a decorator is removed, delete both its import and usage.
 
 #### 3.4 Tensors and shapes
 - Use `mindspore.Tensor` in docstrings.
