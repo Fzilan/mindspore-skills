@@ -1,176 +1,121 @@
 ---
 name: hf-transformers-components-upgrade-migrate
-description: Upgrade mindone.transformers public components to synchronize with a specified transformers version. Use when upgrading transformers version compatibility.
+description: Migrate individual Hugging Face Transformers component files from v4.57.1 to v5.0.0 for mindone.transformers. Use when upgrading specific files like cache_utils.py, masking_utils.py, modeling_utils.py.
 ---
 
-# HF Transformers Components Upgrade Migration
+# HF Transformers Components Upgrade Migrate
 
-Upgrade the public components of mindone.transformers to be fully synchronized with a specified transformers version, ensuring functional and interface consistency while maintaining the stability of the mindone project.
+Migrate individual Hugging Face Transformers files from v4.57.1 to v5.0.0 for mindone.transformers.
 
 ## When to Use
 
-- Upgrading mindone.transformers to match a new transformers library version
-- Synchronizing public APIs, utilities, and configuration classes with upstream transformers
-- Performing version migration for non-model components (excludes transformers/models/)
-- Updating base classes, mixins, and shared utilities
+- Migrate a single file from transformers v4.57.1 to v5.0.0
+- Update a specific component in mindone.transformers
+- Perform granular, file-level migrations
 
-## Repository
+## Repository Structure
 
-Source Repository: **huggingface transformers**: https://github.com/huggingface/transformers
-- **core**: `transformers/src/transformers`
-- **public components**: `transformers/src/transformers/` (excluding `models/`)
+Source: `transformers/src/transformers/`
+Target: `mindone/mindone/transformers/`
 
-Target Repository: **mindone**: https://github.com/mindspore-lab/mindone
-- **mindone.transformers core**: `mindone/mindone/transformers`
-- **public components**: `mindone/mindone/transformers/` (excluding `models/`)
+Migration tracking: `upgrade_data_v4.57.1_to_v5.0.0.xlsx`
 
-## Prerequisites
+## Workflow
 
-- The working directory contains the mindone project
-- Git is installed and available
-- Access to the transformers repository (local clone or remote)
+### Step 1: Analyze
 
-## Instructions
+**Analysis A: mindone vs transformers (same version v4.57.1)**
+1. Read current mindone file (v4.57.1)
+2. Read transformers v4.57.1 file
+3. Compare to identify existing MindSpore-specific modifications
+4. **Document MindSpore helper functions** (CRITICAL - do not lose these):
+   - `dtype_to_min()` - replaces `torch.finfo(dtype).min`
+   - Other dtype-specific constants like `_MIN_FP16`, `_MIN_FP32`
+   - Any utility functions added for MindSpore compatibility
+5. Document other MindSpore adaptations already in place
 
-### Step 1: Environment Preparation and Version Confirmation
+**Analysis B: transformers version diff (v4.57.1 → v5.0.0)**
+1. Generate diff between transformers v4.57.1 and v5.0.0
+2. Identify changes: additions, deletions, API breaking changes
+3. Note v5.0.0 NEW functions that need MindSpore definitions (e.g., `is_flash_attention_requested`)
+4. Note v5.0.0 NEW constants that should be removed (e.g., `_is_torch_xpu_available`)
+5. Note tracing/dynamo related changes that should be DELETED (not replaced)
 
-1. Check the current working directory structure
-   - Confirm the mindone project exists at the expected location
-   - Verify the mindone/transformers directory structure
+<IMPORTANT>
+- Only add functions/definitions that are NEW in v5.0.0 AND needed by the code
+- Do NOT add constants like `_is_torch_xpu_available` - these should be removed
+- Do NOT define tracing/dynamo functions (like `is_tracing`) - DELETE the calls instead
+</IMPORTANT>
 
-2. Check if the transformers project already exists
-   - Look for a local transformers repository
-   - If not present, clone from https://github.com/huggingface/transformers
+### Step 2: Choose Migration Method
 
-3. Acquire or Update the Transformers Repository
-   - Fetch the target version/tag from the transformers repository
-   - Ensure the repository is at the correct commit/branch
-
-### Step 2: User Input Validation and Processing
-
-1. Receive User Input
-   - Obtain the user-specified target transformers version (e.g., "v4.40.0")
-   - Obtain the user-specified module/file list (optional)
-   - Identify the current base version of mindone.transformers
-
-2. Validate User Input
-   - Check if the target version exists in the transformers repository
-   - Validate the legitimacy of specified modules/files
-   - Confirm if user-specified paths exist within the transformers project
-
-3. Input Processing Decision
-   - If user specifies specific modules/files → migrate those only (Targeted Mode)
-   - If no modules specified → analyze all public component files (Full Upgrade Mode)
-
-### Step 3: Version Comparison and Change Analysis
-
-1. Determine Comparison Scope
-   - Identify the transformers base version on which mindone.transformers is built
-   - Use git tags, commit history, or version markers to determine base
-
-2. Obtain differences between the two versions
-   - Use Git commands to compare base version with target version
-   - Focus on files outside the `transformers/models/` directory
-
-3. Generate Change File List
-   - **Exclusion Scope**: All content under `transformers/models/` directory
-   - **Inclusion Scope**: 
-     - Public API components
-     - Utility functions and helpers
-     - Configuration classes
-     - Base classes and mixins
-     - Processing utilities (if they don't depend on model-specific code)
-     - Tokenization utilities (if applicable)
-
-### Step 4: Dependency Analysis and Filtering
-
-1. Work Mode Determination
-   - **Targeted Module Migration Mode**: Process only user-specified modules/files
-   - **Full Upgrade Mode**: Perform priority sorting before processing all changed files
-
-2. Migration File List Determination
-   - For Targeted Mode: Use the user-provided list directly
-   - For Full Upgrade Mode:
-     - Sort files by dependency order (base classes first)
-     - Identify files with no dependencies (can be migrated independently)
-     - Identify files with dependencies (must wait for dependencies)
-     - Create a migration priority list
-
-### Step 5: Migration Execution Preparation
-
-1. For each file in the migration list:
-   - Analyze the changes between versions
-   - Identify API changes, new methods, deprecated methods
-   - Note any breaking changes
-
-2. Create migration plan per file:
-   - Map old APIs to new APIs
-   - Identify MindSpore-specific adaptations needed
-   - Document any compatibility shims required
-
-### Step 6: Reference Skills /hf-transformers-migrate for File Migration
-
-For each file requiring migration:
-
-1. **Copy the source file** from transformers to mindone (if new) or identify existing file
-
-2. **Apply auto-conversion** using the tools from hf-transformers-migrate:
+**Method 1: Full Replacement (Recommended for high complexity)**
+1. Copy transformers v5.0.0 file to mindone
+2. Run auto_convert.py:
    ```bash
-   python skills/hf-transformers-migrate/tools/auto_convert.py \
-     --src_file path/to/file.py --inplace
+   python skills/hf-transformers-components-upgrade-migrate/scripts/auto_convert.py mindone/transformers/file.py
    ```
-   <MUST> Run auto_convert script before any manual edits. </MUST>
+3. Inspect output (check for existing logger, remaining torch refs)
+4. Apply MindSpore adaptations (see references/mindspore-adaptations.md)
+5. Handle file-specific cases
 
-3. **Manual fixes** following the patterns from hf-transformers-migrate:
-   - Structural and API changes (torch.nn.Module → mindspore.nn.Cell, etc.)
-   - Device handling removal
-   - Import and decorator adjustments
-   - Tensor and shape handling
+**Method 2: Diff Application (for low complexity)**
+1. Generate diff between v4.57.1 and v5.0.0
+2. Apply diff to mindone current version
+3. Resolve conflicts
 
-4. **Update registration and exports** if the file affects public APIs:
-   - Update `mindone/mindone/transformers/__init__.py`
-   - Update any auto-configuration files
-   - Ensure proper exports in `__init__.py` files
+### Step 3: Verification
 
-### Step 7: Verification and Testing
+Run verification after migration:
 
-1. **Import verification**
-   - Ensure all migrated modules import cleanly
-   - Check for circular dependencies
+```bash
+# Syntax check
+python -m py_compile mindone/transformers/file.py
 
-2. **API compatibility check**
-   - Verify public API signatures match expected transformers version
-   - Check for missing methods or attributes
+# Import check
+cd mindone && python -c "from mindone.transformers.file import *"
 
-3. **Integration testing**
-   - Run existing tests to ensure no regressions
-   - Test with model loading if applicable
+# Full verification
+python skills/hf-transformers-components-upgrade-migrate/scripts/verify_migration.py mindone/transformers/file.py
+```
+
+## Key Adaptations
+
+Critical MindSpore adaptations for v5.0.0+ files:
+
+1. **Delete PyTorch compatibility constants** (v5.0.0+):
+   - Remove `_is_torch_xpu_available`, `_is_torch_greater_or_equal_than_2_6`, etc.
+   - Simplify conditionals that use these constants
+
+2. **Add v5.0.0 NEW function definitions** (only if needed):
+   - Check Step 1 Analysis B for NEW functions in v5.0.0 (not present in v4.57.1)
+   - Add MindSpore versions only for functions the code actually uses
+   - Example: `is_flash_attention_requested()` if it's NEW in v5.0.0
+
+3. **Handle flex_attention**: Replace with NotImplementedError
+
+4. **Remove XPU-specific code**: Delete `_can_skip_causal_mask_xpu` and simplify conditionals
+
+5. **Delete tracing/dynamo code**: Remove `is_tracing()` calls and related checks (don't define the function)
+
+6. **Replace torch.finfo**:
+   - If mindone v4.57.1 has `dtype_to_min()` helper: use `dtype_to_min(dtype)`
+   - Otherwise: `ms.tensor(float('-inf'), dtype=dtype)`
+
+See [references/mindspore-adaptations.md](references/mindspore-adaptations.md) for complete adaptation guide.
 
 ## Guardrails
 
-- **DO NOT migrate** any files under `transformers/models/` directory
-- **DO migrate** public components, utilities, base classes, and configuration classes
-- Keep changes minimal and focused on version synchronization
-- Maintain backward compatibility where possible
-- Document any breaking changes
+- Do NOT migrate `__init__.py` until all components are updated
+- Always run auto_convert.py before manual edits:
+  ```bash
+  python skills/hf-transformers-components-upgrade-migrate/scripts/auto_convert.py mindone/transformers/file.py
+  ```
+- Check for existing logger definition before adding one
+- Add new function definitions identified in Step 1
 
 ## References
 
-- Environment and setup: `references/env.md`
-- Guardrails and constraints: `references/guardrails.md`
-- Migration tools: Use `skills/hf-transformers-migrate/tools/`
-
-## Output
-
-- List of files migrated and changes made
-- Version compatibility notes
-- Any breaking changes or deprecated APIs
-- Suggested tests to run
-- Migration summary report
-
-## Done Criteria
-
-- All targeted public components are synchronized with the specified transformers version
-- Modules import cleanly without errors
-- No regressions in existing functionality
-- Documentation updated with version compatibility info
+- [MindSpore Adaptations Guide](references/mindspore-adaptations.md) - Complete adaptation checklist
+- [Troubleshooting](references/troubleshooting.md) - Common errors and fixes
+- [Migration Examples](references/examples.md) - Example migrations
