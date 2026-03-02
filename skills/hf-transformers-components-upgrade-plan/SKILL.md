@@ -219,6 +219,15 @@ Example: `upgrade_data_v4.57.1_to_v5.0.0.xlsx`
 
 **Sheet structure**:
 
+## Additional Reference
+
+- Runbook decision framework (when to write a runbook vs. apply a small patch, and a standard runbook template):
+  - `skill/hf-transformers-components-upgrate-plan/references/scope_and_runbook_framework.md`
+  - Chinese version: `skill/hf-transformers-components-upgrate-plan/references/scope_and_runbook_framework.zh.md`
+- Runbook examples:
+  - `skill/hf-transformers-components-upgrate-plan/examples/runbook_modeling_utils.md`
+  - `skill/hf-transformers-components-upgrate-plan/examples/runbook_.md`
+
 | Row | Content |
 |-----|---------|
 | 1-5 | Header section (title, statistics, rules, priority guide) |
