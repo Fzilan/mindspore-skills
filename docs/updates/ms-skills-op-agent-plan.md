@@ -2,119 +2,81 @@
 
 ## Goal
 
-Refine the operator-domain skill design under the direction of
+Define a stricter operator-domain skill architecture under the constraints of
 `docs/updates/ms-skills-update-plan.md`.
 
-This document is intentionally stricter than the current repository state:
+The goals are:
 
-- design from the target role of `op-agent`
-- keep the same prompt-first and manual-first principles
-- describe skills using the same style as the update plan
-- use clean target names instead of legacy accidental names
+- `op-agent` is the only high-level entrypoint
+- builders own implementation paths only
+- phase 1 stays prompt-first and manual-first
+- phase 1 does not introduce a separate discovery skill or implicit helper tooling
 
 ## Alignment With ms-skills-update-plan
 
-This document stays aligned with the parent update plan in four ways:
+This plan stays aligned with the parent update plan in four ways:
 
-1. `op-agent` remains a high-level diagnosis / routing / strategy skill
+1. `op-agent` remains the diagnosis / routing / strategy layer
 2. implementation-oriented skills remain below it
-3. initial packaging remains `SKILL.md` + `skill.yaml` + `tests/`
-4. helper tooling remains optional later work, not phase-1 scope
+3. phase 1 still uses `SKILL.md` + `skill.yaml` + `tests/`
+4. phase 1 does not depend on a shared helper-tool runtime
 
-This document adds one supporting helper skill because the current operator
-domain needs a unified evidence-collection layer. That helper is a support
-skill for `op-agent`, not a peer high-level agent family.
+This plan also adds one stricter operator-domain rule:
 
-## Target Skill Tree
+- discovery is an internal capability of `op-agent`, not a separate top-level skill
 
-The clean target tree should be:
+## Structure
 
 ```text
 skills/
-├── op-agent/
-│   ├── SKILL.md
-│   ├── skill.yaml
-│   └── tests/
-│
-├── op-discovery-helper/
-│   ├── SKILL.md
-│   ├── skill.yaml
-│   ├── reference/
-│   │   ├── api-callchain.md
-│   │   └── mint-aclnn-inventory.md
-│   └── tests/
-│
-├── cpu-plugin-builder/
-│   ├── SKILL.md
-│   ├── skill.yaml
-│   ├── reference/
-│   └── tests/
-│
-├── cpu-native-builder/
-│   ├── SKILL.md
-│   ├── skill.yaml
-│   ├── reference/
-│   └── tests/
-│
-├── gpu-builder/
-│   ├── SKILL.md
-│   ├── skill.yaml
-│   ├── reference/
-│   └── tests/
-│
-├── aclnn-builder/
-│   ├── SKILL.md
-│   ├── skill.yaml
-│   ├── workflows/
-│   ├── templates/
-│   ├── reference/
-│   └── tests/
+├── op-agent/                  # discovery + routing single entrypoint
+├── cpu-plugin-builder/        # CPU plugin implementation
+├── cpu-native-builder/        # CPU native implementation
+├── gpu-builder/               # GPU implementation
+└── aclnn-builder/             # Ascend ACLNN implementation
 ```
 
 ## Layering Model
 
-### Layer 1: Routing
+### Layer 1: Routing + Discovery
 
 - `op-agent`
 
-This is the high-level entry for operator-gap problems.
+`op-agent` is the only high-level entry for operator-gap problems.
+It performs two functions internally:
 
-### Layer 2: Discovery
+- minimal discovery
+- routing decisions
 
-- `op-discovery-helper`
-
-This is the supporting evidence-collection layer for `op-agent`.
-
-### Layer 3: Implementation
+### Layer 2: Implementation
 
 - `cpu-plugin-builder`
 - `cpu-native-builder`
 - `gpu-builder`
 - `aclnn-builder`
 
-These skills are implementation workflows. They are not routing skills.
+These skills implement concrete backend paths. They do not own high-level
+discovery or routing.
 
 ## Naming Rules
 
-Use names that reflect layer semantics:
+Only keep two naming categories in the target taxonomy:
 
-- `*-agent`: diagnosis, routing, strategy
-- `*-helper`: evidence collection, inventory, lookup
-- `*-builder`: concrete implementation workflow
+- `*-agent`: high-level diagnosis, routing, strategy
+- `*-builder`: concrete implementation path
 
-Do not use target names like:
+Do not keep the following as target taxonomy names:
 
+- `*-helper`
 - `*-precheck`
 - `*-inventory`
 - `*-devflow`
 
-unless they are references, subdocuments, or temporary migration names.
+These names may only appear as:
 
-In particular:
-
-- the clean target name is `aclnn-builder`
-- `mindspore-aclnn-operator-devflow` is only a legacy migration reference
-- it should not define the long-term skill taxonomy
+- legacy names
+- reference file names
+- migration notes
 
 ## Skill Specs
 
@@ -136,65 +98,33 @@ workflow.
 
 The skill should instruct the agent to:
 
-1. identify the missing operator and platform gap
-2. inspect the Factory `operator` card if Factory query is available
-3. request discovery evidence if the current facts are incomplete
-4. choose the right implementation path
-5. delegate to an existing builder skill where possible
+1. identify the missing operator and backend/platform gap
+2. inspect Factory `operator` knowledge if available
+3. perform minimal discovery inside the same skill
+4. choose one implementation path
+5. delegate to one builder skill where possible
 6. summarize implementation and validation next steps
 
-**Boundary**
+**Discovery Checklist**
 
-- owns diagnosis / routing / strategy
-- does not perform full static inventory itself
-- does not expand into detailed backend implementation workflow
-- does not become a builder
+The internal discovery phase of `op-agent` should only perform the minimum
+necessary checks, typically including:
 
-### op-discovery-helper
+- API entrypoint / Primitive
+- `op_def` / `api_def` mapping
+- current backend support signals
+- `dispatch` / `kbk` / `pyboost` / `bprop` in Ascend-related cases
+- sink-path information in mint-related cases
 
-**Purpose**
-
-Provide the static evidence needed for operator routing decisions.
-
-**Recommended use**
-
-- API entrypoint is unclear
-- Primitive mapping is unclear
-- backend support status is unclear
-- mint-to-ACLNN sink information is needed
-- `op-agent` lacks enough evidence to select a builder path
-
-**SKILL.md guidance**
-
-The skill should instruct the agent to:
-
-1. inspect API entrypoints and call-chain facts
-2. inspect Primitive, `op_def`, and `api_def` mappings
-3. inspect backend support signals
-4. inspect Ascend dispatch mode, `kbk`, `pyboost`, `bprop`, and backward wiring when relevant
-5. return only structured evidence and stop before route selection
+These checks are prompt-guided manual inspection. They must not assume a
+separate script, scanner, or shared helper tool in phase 1.
 
 **Boundary**
 
-- owns static discovery only
-- produces facts for `op-agent`
-- does not choose the final path
-- does not recommend code changes
-- does not take over implementation
-
-**Typical output**
-
-- `api_entry`
-- `primitive`
-- `op_def_branches`
-- `backend_support`
-- `ascend_dispatch`
-- `pyboost`
-- `kbk`
-- `bprop`
-- `backward_ops`
-- `deprecated_branches`
-- `notes`
+- owns discovery + routing
+- does not load a second top-level discovery skill
+- does not expand into backend-specific implementation work
+- does not assume stable automated static-analysis tooling in phase 1
 
 ### cpu-plugin-builder
 
@@ -205,8 +135,8 @@ Implement CPU operators through ATen/libtorch in `mindspore_op_plugin`.
 **Recommended use**
 
 - CPU implementation is required
-- ATen or `mindspore_op_plugin` is the chosen path
-- the routing decision has already been made
+- ATen or `mindspore_op_plugin` is the selected path
+- routing has already been decided
 
 **Boundary**
 
@@ -224,8 +154,8 @@ Implement native CPU kernels directly in MindSpore.
 **Recommended use**
 
 - CPU implementation is required
-- native kernel path is preferred
-- the routing decision has already been made
+- native kernel is the selected path
+- routing has already been decided
 
 **Boundary**
 
@@ -243,8 +173,8 @@ Implement GPU operators through CUDA or GPU-side integration paths.
 **Recommended use**
 
 - GPU backend support is missing
-- GPU implementation path has been selected
-- the routing decision has already been made
+- the GPU implementation path has been selected
+- routing has already been decided
 
 **Boundary**
 
@@ -256,60 +186,102 @@ Implement GPU operators through CUDA or GPU-side integration paths.
 
 **Purpose**
 
-Implement ACLNN-based Ascend operator adaptation end to end.
+Implement ACLNN-based Ascend operator adaptation as the selected implementation
+path.
 
 **Recommended use**
 
 - Ascend backend support is missing
 - ACLNN is the selected path
-- work includes YAML, GeneralInfer, PyBoost, KBK, bprop, tests, or docs
+- work includes YAML, GeneralInfer, PyBoost, KBK, bprop, export, or tests
 
 **Boundary**
 
 - implementation only
 - no global routing role
-- no generic discovery role
+- no global discovery role
+- no default ownership of RFC / feature-delivery / transfer-to-test workflows
 
-## Hard Boundaries
+## Builder Input Contract
 
-The following boundaries should be enforced across the operator skill family:
+Before handing work to a builder, `op-agent` should try to establish at least:
 
-- `op-agent` owns routing
-- `op-discovery-helper` owns static evidence collection
-- each builder owns exactly one implementation path
-- no helper may evolve into a builder
-- no builder may absorb global routing
+- `op_name`
+- target backend
+- selected implementation path
+- forward / backward scope
+- reference implementation or source clue
 
-## Merge Decision: api-helper + mint-aclnn-precheck
+For `aclnn-builder`, it should ideally also establish:
 
-The old split between generic API lookup and mint-to-ACLNN precheck should be
-removed.
+- target `aclnnXxx`
+- path-internal evidence for `auto-generate` vs `customize`
+- dtype / layout / shape constraints
+- dynamic-shape / dynamic-rank expectations
 
-They should be merged into:
+If these prerequisites are clearly missing, the builder may request more
+information, but it should not collapse back into a high-level routing role.
 
-- `op-discovery-helper`
+## Builder Core Scope
 
-Reason:
+The core scope of a builder is code implementation and code validation.
 
-- both are discovery-layer skills
-- both exist to collect routing evidence before implementation
-- splitting them by CPU-era vs ACLNN-era history creates the wrong boundary
+For `aclnn-builder`, the core scope includes:
 
-After the merge:
+- YAML
+- codegen
+- GeneralInfer
+- PyBoost
+- KBK
+- bprop
+- export
+- tests
 
-- call-chain lookup becomes one discovery capability
-- mint-to-ACLNN inventory becomes another discovery capability
-- `op-agent` consumes one unified discovery schema
+The following should not define the builder itself:
+
+- feature-document workflow
+- RFC / PR workflow
+- transfer-to-test workflow
+- generic discovery / call-chain inventory
+
+If these are retained, they should be downgraded to references or checklists,
+not kept as the builder's default main flow.
+
+## Path-Internal Decisions
+
+The plan must explicitly distinguish:
+
+- global routing decisions
+- path-internal implementation decisions
+
+Specifically:
+
+- `op-agent` owns the global routing decision  
+  Example: CPU vs GPU vs ACLNN
+- `aclnn-builder` owns only ACLNN-internal decisions  
+  Example: `auto-generate` vs `customize`
+
+A builder must not take global path selection back from `op-agent`.
+
+## Builder Exit Criteria
+
+When a builder finishes, it should at least provide:
+
+- the implementation path used
+- the key code change locations
+- the core validation method and result
+- the test coverage status
+- the known residual risks
 
 ## Routing Contract
 
 `op-agent` should follow this contract:
 
 1. determine whether the request is an operator-gap problem
-2. request evidence from `op-discovery-helper` if needed
+2. perform minimal discovery inside the same skill
 3. choose one implementation path when possible
 4. hand off to one builder skill
-5. summarize the selected path, reason, and validation next steps
+5. summarize the selected path, the reason, and the next validation steps
 
 Default routing examples:
 
@@ -318,77 +290,75 @@ Default routing examples:
 - GPU path -> `gpu-builder`
 - Ascend + ACLNN path -> `aclnn-builder`
 
-`op-agent` should not load multiple full builder skills into one task unless a
-single route genuinely cannot be selected.
+`op-agent` must not load a separate top-level discovery skill in the same task.
+
+## Legacy Mapping
+
+Current non-target names should be handled as follows:
+
+- `api-helper` -> merge into `op-agent` internal discovery references
+- `mint-aclnn-precheck` -> merge into `op-agent` internal discovery references
+- `mindspore-aclnn-operator-devflow` -> migrate to `aclnn-builder`
+- `npu-builder` -> remove from the target taxonomy
+
+These legacy names exist only for migration and should not define the target
+architecture.
 
 ## Scope Discipline
 
-The following should not become new top-level operator skills in phase 1:
+Phase 1 should not add the following as top-level skills:
 
-- mint-only precheck skills
-- backend-specific inventory skills
-- route-selection helper skills that duplicate `op-agent`
-- tooling wrappers without stable upstream runtime support
+- discovery helper
+- mint-only precheck skill
+- backend-specific inventory skill
+- tooling wrapper without stable runtime support
 
 If phase-1 capability needs to grow, prefer:
 
-- adding instructions to `op-agent`
-- adding references to `op-discovery-helper`
-- tightening builder boundaries
+- expanding the internal discovery checklist of `op-agent`
+- tightening builder boundaries and builder input contracts
+- moving lessons learned into references or checklists
 
-Do not add a top-level skill only because a sub-step exists.
+Do not promote a sub-step into a top-level skill just because the sub-step
+exists.
 
 ## Packaging Requirements
 
-Each top-level skill in this plan should satisfy the repository contract:
+Each top-level skill in this plan must still satisfy the repository contract:
 
 - `SKILL.md`
 - `skill.yaml`
 - `tests/`
 
-For the first phase:
+Phase 1 still uses:
 
 - `skill.yaml.entry.type: manual`
 - `skill.yaml.entry.path: SKILL.md`
-- dependencies stay minimal and honest
 
 ## Validation
 
-After restructuring the operator-domain skills:
+After the restructuring:
 
 ```bash
 python tools/check_consistency.py
 pytest tests/contract
 ```
 
-Each key skill should also have a small invoke-ratio / step-compliance test set,
-especially:
+Priority invoke-ratio / step-compliance test targets:
 
 - `op-agent`
-- `op-discovery-helper`
 - `aclnn-builder`
-
-## Legacy Mapping
-
-The clean target names above are design names. During migration, the current
-repository may still contain legacy names.
-
-Suggested mapping:
-
-- `api-helper` + `mint-aclnn-precheck` -> `op-discovery-helper`
-- `mindspore-aclnn-operator-devflow` -> `aclnn-builder`
-- `npu-builder` -> remove from target taxonomy; migrate any still-useful content before deletion
-
-Legacy names should be treated as migration artifacts, not as the target
-taxonomy.
 
 ## Summary
 
-The target operator-domain architecture is:
+The second-version operator skill design is:
 
-- one routing skill: `op-agent`
-- one discovery support skill: `op-discovery-helper`
-- several implementation skills: the backend builders
+- one high-level entrypoint: `op-agent`
+- multiple implementation-path skills: builders
 
-This keeps the operator domain aligned with the update plan while fixing the
-current mixed-layer naming and boundary problems.
+Discovery still exists, but it is strictly folded back into `op-agent`.
+This is the cleanest way to satisfy all of the following at once:
+
+- the prompt-first / manual-first constraints from the update plan
+- the single-entry interaction model
+- the boundary that builders are implementation-path skills
