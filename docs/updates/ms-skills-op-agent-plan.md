@@ -12,6 +12,18 @@ The goals are:
 - phase 1 stays prompt-first and manual-first
 - phase 1 does not introduce a separate discovery skill or implicit helper tooling
 
+## Upstream Handoff Assumption
+
+`op-agent` assumes the upstream analysis layer has already identified:
+
+- the API name, such as `mindspore.mint.xxx`
+- the backend where it fails or is unsupported
+- that the issue is an operator-gap problem
+
+Under this assumption, `op-agent` does not need to rediscover whether the
+problem belongs to the operator domain. Its job is to perform enough internal
+helper-phase discovery to route correctly, then hand off to the right builder.
+
 ## Alignment With ms-skills-update-plan
 
 This plan stays aligned with the parent update plan in four ways:
@@ -24,6 +36,9 @@ This plan stays aligned with the parent update plan in four ways:
 This plan also adds one stricter operator-domain rule:
 
 - discovery is an internal capability of `op-agent`, not a separate top-level skill
+
+It is better described as an internal helper phase / supporting step inside
+`op-agent`, not as a standalone helper skill.
 
 ## Structure
 
@@ -47,6 +62,9 @@ It performs two functions internally:
 
 - minimal discovery
 - routing decisions
+
+The discovery part is an internal helper phase for understanding MindSpore code
+structure and routing implications.
 
 ### Layer 2: Implementation
 
@@ -118,6 +136,12 @@ necessary checks, typically including:
 
 These checks are prompt-guided manual inspection. They must not assume a
 separate script, scanner, or shared helper tool in phase 1.
+
+This discovery phase is an internal helper phase / supporting step for
+`op-agent`. Its purpose is to:
+
+- help `op-agent` understand the actual mapping relationships in MindSpore code
+- help `op-agent` converge from “`mint.xxx` fails on backend Y” to “choose implementation path Z”
 
 **Boundary**
 
@@ -277,7 +301,7 @@ When a builder finishes, it should at least provide:
 
 `op-agent` should follow this contract:
 
-1. determine whether the request is an operator-gap problem
+1. accept an upstream operator-gap handoff
 2. perform minimal discovery inside the same skill
 3. choose one implementation path when possible
 4. hand off to one builder skill
@@ -315,7 +339,7 @@ Phase 1 should not add the following as top-level skills:
 
 If phase-1 capability needs to grow, prefer:
 
-- expanding the internal discovery checklist of `op-agent`
+- expanding the internal helper-phase discovery checklist of `op-agent`
 - tightening builder boundaries and builder input contracts
 - moving lessons learned into references or checklists
 
@@ -357,8 +381,28 @@ The second-version operator skill design is:
 - multiple implementation-path skills: builders
 
 Discovery still exists, but it is strictly folded back into `op-agent`.
+Inside `op-agent`, it should be treated as an internal helper phase rather than
+as a separate skill.
 This is the cleanest way to satisfy all of the following at once:
 
 - the prompt-first / manual-first constraints from the update plan
 - the single-entry interaction model
 - the boundary that builders are implementation-path skills
+
+
+
+## Phase 2: Cross-Team Dependencies & Future Work
+
+To maintain strict adherence to the phase 1 `manual-first` constraint and avoid blocking the current release on cross-team coordination (e.g., with the `ms-cli` core framework team), the following system-level integrations are explicitly deferred to a future phase:
+
+1. **Automated Skill Delegation (True Handoffs)**
+   - *Current (Phase 1):* `op-agent` acts as an advisor. It instructs the user via text to manually invoke the next builder command (e.g., "Please run `/build aclnn`").
+   - *Phase 2 Goal:* Collaborate with the `ms-cli` team to implement programmatic state-machine handoffs, allowing the runtime controller to automatically suspend the routing agent and launch the builder agent without manual user typing.
+
+2. **Global Command Registry Synchronization**
+   - *Current (Phase 1):* `op-agent` relies on a hardcoded assumption of downstream commands mapped in `SKILL.md` (e.g., assuming `/build gpu` exists).
+   - *Phase 2 Goal:* Integrate with a unified `ms-cli` command registry so skills can dynamically query available downstream routes and builders instead of hardcoding command strings.
+
+3. **Structured Upstream Context Passing**
+   - *Current (Phase 1):* `op-agent` assumes the context (like the exact missing API) implicitly carries over from an upstream `/diagnose` session (`failure-agent`), relying entirely on the LLM's conversation history window.
+   - *Phase 2 Goal:* Introduce a structured "blackboard" or session-state object in the `ms-cli` runtime that explicitly passes the structured diagnosis payload from `failure-agent` to `op-agent`.
