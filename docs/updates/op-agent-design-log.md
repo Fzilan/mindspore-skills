@@ -84,3 +84,37 @@ skills/
 - 将 `Upstream Handoff Assumption` 提升到 plan 头部，why：这是 `op-agent` 的定位前提，不是普通步骤说明
 - 明确 `op-agent` 默认承接 analysis agent 的 handoff，why：避免它重新承担 analysis 职责
 - 明确 helper 只是 `op-agent` 内部用于理解 MindSpore 映射关系和支持路由的 phase，why：进一步收紧 discovery 的角色边界
+
+## V4
+
+### 存量问题
+
+- V3 已经明确了 assumption 和 helper phase，但 plan 的整体表达还需要进一步收口
+- 需要把这些定位约束贯穿到整份 plan，而不是只停留在局部段落
+- 需要让文档表达方式更统一，便于后续直接作为正式设计稿使用
+
+### 预期
+
+- plan 整体表达统一、稳定，可直接作为当前版本设计依据
+- `Upstream Handoff Assumption` 成为全文最前置的定位前提
+- helper phase 的定义贯穿 `op-agent` 的职责、discovery、routing contract
+
+### Structure
+
+```text
+skills/
+├── op-agent/                  # analysis handoff 后的单入口，内部含 helper phase
+├── cpu-plugin-builder/        # CPU plugin 实现
+├── cpu-native-builder/        # CPU native 实现
+├── gpu-builder/               # GPU 实现
+└── aclnn-builder/             # Ascend ACLNN 实现
+```
+
+### 改动点
+
+- 将 `Upstream Handoff Assumption` 固定在文档头部，why：让 `op-agent` 的定位前提先于所有细节展开
+- 将 helper phase 的定义贯穿到 `Layering Model`、`Discovery Checklist`、`Routing Contract`，why：避免 helper 只在局部段落出现，导致理解不一致
+- 明确 `aclnn-builder` 将承接 `mindspore-aclnn-operator-devflow` 的实现能力，但不原样继承其全流程叙事，why：整体架构要收口，但实现能力不能缺
+- 将全局 precheck 收回 `op-agent` 内部 helper phase，将 ACLNN 路径内 precheck 保留为 `aclnn-builder` 的 path-internal decision，why：把高层路由前提和路径内实现决策分开
+- 将 test 从“大一统 devflow 的组成部分”收口为 builder 的 validation gate，why：保留质量门禁，但不让 builder 默认承担完整交付流程
+- 保持结构不变但强化文字约束，why：当前这一轮主要是收口定位，不是再做架构扩张

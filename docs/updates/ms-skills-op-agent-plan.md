@@ -248,28 +248,23 @@ information, but it should not collapse back into a high-level routing role.
 
 ## Builder Core Scope
 
-The core scope of a builder is code implementation and code validation.
+The core scope of a builder is strictly limited to code implementation and code validation. 
 
-For `aclnn-builder`, the core scope includes:
+To bridge the gap from the high-level `op-agent` routing, builders MUST follow a structured internal flow starting with a "Step 0":
 
-- YAML
-- codegen
-- GeneralInfer
-- PyBoost
-- KBK
-- bprop
-- export
-- tests
+- **Step 0: Implementation Reconnaissance (Builder-owned Discovery)**
+  Before writing code, the builder must autonomously scrape necessary upstream references (e.g., `torch_npu` C++ sources, YAMLs) to determine precise parameter mappings, dtype constraints, and make path-internal architecture decisions (e.g., `auto-generate` vs `customize`).
+
+- **Implementation Execution**
+  (For `aclnn-builder`: YAML, codegen, GeneralInfer, PyBoost, KBK, bprop, export)
+
+- **Testing and Validation (UT / ST)**
+  The builder strictly owns the generation of test artifacts. It must implement C++ UTs and Python STs following repository-specific rules (e.g., registering STs in `op_database.py` rather than standalone test scripts). The builder's job is not done until testing is addressed.
 
 The following should not define the builder itself:
-
-- feature-document workflow
+- feature-document workflow (downgraded to passive checklists)
 - RFC / PR workflow
-- transfer-to-test workflow
-- generic discovery / call-chain inventory
-
-If these are retained, they should be downgraded to references or checklists,
-not kept as the builder's default main flow.
+- generic global discovery outside the target operator
 
 ## Path-Internal Decisions
 
@@ -282,8 +277,11 @@ Specifically:
 
 - `op-agent` owns the global routing decision  
   Example: CPU vs GPU vs ACLNN
-- `aclnn-builder` owns only ACLNN-internal decisions  
-  Example: `auto-generate` vs `customize`
+- `aclnn-builder` owns strictly ACLNN-internal architecture decisions. 
+  `op-agent` may pass hints, but `aclnn-builder` makes the final technical call on:
+  - `auto-generate` (Path 1) vs `customize` (Path 2)
+  - 1:1 direct kernel mapping vs 1:N composite operator stitching
+  - Dynamic shape / dynamic rank strategies
 
 A builder must not take global path selection back from `op-agent`.
 
@@ -293,9 +291,9 @@ When a builder finishes, it should at least provide:
 
 - the implementation path used
 - the key code change locations
-- the core validation method and result
+- the core validation method and result (UT/ST)
 - the test coverage status
-- the known residual risks
+- **Passive Compliance Checklists:** Instead of automatically generating heavyweight Feature documents or PR reports, the builder must output a clear markdown checklist telling the developer what administrative tasks remain before submission (e.g., "Please manually update Feature.md and ensure Chinese RST docs are generated").
 
 ## Routing Contract
 
@@ -406,3 +404,7 @@ To maintain strict adherence to the phase 1 `manual-first` constraint and avoid 
 3. **Structured Upstream Context Passing**
    - *Current (Phase 1):* `op-agent` assumes the context (like the exact missing API) implicitly carries over from an upstream `/diagnose` session (`failure-agent`), relying entirely on the LLM's conversation history window.
    - *Phase 2 Goal:* Introduce a structured "blackboard" or session-state object in the `ms-cli` runtime that explicitly passes the structured diagnosis payload from `failure-agent` to `op-agent`.
+
+4. **Composite Operator Support (1:N Mappings)**
+   - *Current (Phase 1):* Builders assume a 1:1 direct mapping from the framework API to a single backend kernel. Complex callchains requiring C++ stitching (PyBoost) or Meta DSL (KBK) are out of scope.
+   - *Phase 2 Goal:* Introduce specialized handling or an internal builder sub-routine to manage 1:N composite operator breakdown, parameter pre-processing, and multi-kernel dispatch logic.
