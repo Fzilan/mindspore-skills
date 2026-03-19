@@ -1,0 +1,48 @@
+schema_version: "1.0.0"
+name: "op-agent"
+display_name: "Op Agent"
+description: "User-facing navigator for operator-gap cases. Explains Native vs Plugin, shows the six operator builders, and routes to the best-fit builder."
+version: "0.1.0"
+
+entry:
+  type: "manual"
+  path: "SKILL.md"
+
+inputs:
+  - name: "api_name"
+    type: "string"
+    required: true
+    description: "MindSpore API or operator name from the upstream handoff."
+  - name: "target_backend"
+    type: "enum"
+    required: true
+    choices: ["CPU", "GPU", "NPU"]
+    description: "Backend where the operator gap is observed."
+  - name: "problem_type"
+    type: "string"
+    required: false
+    description: "Expected to already be classified as an operator-gap problem."
+  - name: "known_evidence"
+    type: "string"
+    required: false
+    description: "Short summary of unsupported behavior and any native/plugin clue already known."
+
+outputs:
+  report_schema: "skills/_shared/contract/report.schema.json"
+  out_dir_layout: "runs/<run_id>/out/"
+
+permissions:
+  network: "none"
+  filesystem: "workspace-write"
+
+dependencies:
+  tools:
+    - "bash"
+    - "rg"
+  python: []
+
+tags:
+  - "mindspore"
+  - "operator"
+  - "navigator"
+  - "routing"
