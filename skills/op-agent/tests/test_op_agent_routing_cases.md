@@ -62,7 +62,7 @@ known_evidence:
 - when no contrary evidence exists, prefer `gpu-native-builder`
 - keep the explanation user-facing
 
-## Case 4: NPU ACLNN path
+## Case 4: Ascend ACLNN maps to NPU native
 
 ### Input
 
@@ -78,6 +78,7 @@ known_evidence:
 
 - explain the two ways first
 - explain the six builders, then focus on the NPU pair
+- apply the explicit rule that Ascend ACLNN belongs to the NPU Native path
 - route to `npu-native-builder`
 - explain why the native NPU path is the better fit
 

@@ -33,12 +33,10 @@ outputs:
 
 permissions:
   network: "none"
-  filesystem: "workspace-write"
+  filesystem: "read"
 
 dependencies:
-  tools:
-    - "bash"
-    - "rg"
+  tools: []
   python: []
 
 tags:

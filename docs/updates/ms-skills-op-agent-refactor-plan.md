@@ -92,6 +92,10 @@ In other words:
 - builders own implementation paths
 - the shared capability provides common internal analysis support behind them
 
+The concrete refactor for this shared capability is described in:
+
+- `docs/updates/ms-skills-shared-api-reference-proposal.md`
+
 ## The Orthogonal Integration Matrix
 
 The target taxonomy is a strict 2x3 matrix:

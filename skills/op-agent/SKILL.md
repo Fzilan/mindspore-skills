@@ -55,6 +55,12 @@ Use this builder shelf summary when you explain the options:
 | GPU | `gpu-native-builder` | `gpu-plugin-builder` |
 | NPU | `npu-native-builder` | `npu-plugin-builder` |
 
+NPU note:
+
+- In this skill, Ascend ACLNN adaptation belongs to the NPU Native path.
+- If the user asks for ACLNN on NPU or Ascend, route to `npu-native-builder`.
+- Do not route ACLNN requests to `npu-plugin-builder`.
+
 Use this answer shape:
 
 ```text
