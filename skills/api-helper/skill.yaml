@@ -1,0 +1,39 @@
+schema_version: "1.0.0"
+name: "api-helper"
+display_name: "API Helper"
+description: "MindSpore API analysis skill for mint.*, tensor.*, forward/backward mapping, and API call-chain lookup."
+version: "0.1.0"
+
+entry:
+  type: "manual"
+  path: "SKILL.md"
+
+inputs:
+  - name: "api"
+    type: "string"
+    required: true
+    description: "Public MindSpore API such as mindspore.mint.add."
+  - name: "question_scope"
+    type: "enum"
+    required: true
+    choices: ["identity", "bprop", "inventory"]
+    description: "Which level of API evidence to collect."
+
+outputs:
+  report_schema: "skills/_shared/contract/report.schema.json"
+  out_dir_layout: "runs/<run_id>/out/"
+
+permissions:
+  network: "none"
+  filesystem: "read"
+
+dependencies:
+  tools:
+    - "rg"
+  python: []
+
+tags:
+  - "mindspore"
+  - "api"
+  - "analysis"
+  - "call-chain"
