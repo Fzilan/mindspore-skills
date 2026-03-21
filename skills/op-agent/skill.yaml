@@ -1,7 +1,7 @@
 schema_version: "1.0.0"
 name: "op-agent"
 display_name: "Op Agent"
-description: "User-facing navigator for operator-gap cases. Explains Native vs Plugin, shows the six operator builders, and routes to the best-fit builder."
+description: "User-facing navigator for operator-gap cases. Analyzes support status and routes to the best-fit builder based on maturity."
 version: "0.1.0"
 
 entry:

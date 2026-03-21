@@ -3,7 +3,26 @@
 Prompt-eval style samples for the navigator skill. These are not executable
 tests; they define the expected routing behavior and wording discipline.
 
-## Case 1: CPU plugin path
+## Case 1: CPU Recommended Path (Plugin)
+
+### Input
+```text
+api_name: mindspore.mint.abs
+target_backend: CPU
+problem_type: operator-gap
+known_evidence:
+  - The operator is missing on CPU.
+  - No specific integration requirement provided.
+```
+  
+### Expected
+
+- Maturity Alignment: Identify that for CPU, the Plugin path is the Mature/Recommended option.
+- Explanation: Briefly explain Native vs. Plugin but highlight the maturity of the CPU Plugin.
+- Route: Recommend cpu-plugin-builder.
+- Justification: State that the plugin path is currently the most mature and recommended workflow for CPU operator expansion.
+
+## Case 2: CPU Native Path (Manual Override)
 
 ### Input
 
@@ -12,38 +31,35 @@ api_name: mindspore.mint.xxx
 target_backend: CPU
 problem_type: operator-gap
 known_evidence:
-  - The missing implementation should reuse an external plugin-style path.
-  - CPU backend currently does not support this operator.
+  - The user explicitly requires deep framework integration inside MindSpore core.
 ```
 
 ### Expected
 
-- explain the two ways first: build inside MindSpore vs build through plugin
-- explain the six builders, then focus on the CPU pair
-- restate the CPU operator gap
-- route to `cpu-plugin-builder`
-- state why plugin is the best-fit support class
+- Requirement Recognition: Acknowledge the user's specific requirement for a Native implementation.
+- Route: route to `cpu-native-builder`
+- Status Note: Mention that while the Plugin path is generally recommended for CPU, the Native path is available and utilized for core integration needs.
 
-## Case 2: CPU native path
+## Case 3: NPU Standard Path (ACLNN)
 
 ### Input
 
 ```text
-api_name: mindspore.mint.xxx
-target_backend: CPU
+api_name: mindspore.mint.mul
+target_backend: Ascend
 problem_type: operator-gap
 known_evidence:
-  - The gap should be solved through MindSpore's native CPU integration path.
+  - This is an ACLNN-based implementation task.
 ```
 
 ### Expected
 
-- explain the two ways first
-- explain the six builders, then focus on the CPU pair
-- route to `cpu-native-builder`
-- keep the answer at navigator level
+- Terminology Mapping: Map "Ascend" to the "NPU" target backend.
+- Maturity Alignment: Identify npu-native-builder as the Mature/Standard path for NPU.
+- Rule Application: Apply the rule that ACLNN adaptations belong exclusively to the NPU Native workflow.
+- Route: Route to npu-native-builder.
 
-## Case 3: GPU unsupported
+## Case 4: GPU Gaps (Roadmap/Planned)
 
 ### Input
 
@@ -51,54 +67,44 @@ known_evidence:
 api_name: mindspore.mint.xxx
 target_backend: GPU
 problem_type: operator-gap
-known_evidence:
-  - The operator is unsupported on GPU.
 ```
 
 ### Expected
 
-- explain the two ways first
-- explain the six builders, then focus on the GPU pair
-- when no contrary evidence exists, prefer `gpu-native-builder`
-- keep the explanation user-facing
+- Maturity Alignment: Identify that both GPU builders are currently in the Planned/Roadmap phase.
+- Route: Set "Best fit" to Roadmap or Unresolved.
+- Next Step: Inform the user that GPU support is on the roadmap and provide instructions for tracking its availability.
 
-## Case 4: Ascend ACLNN maps to NPU native
-
-### Input
-
-```text
-api_name: mindspore.mint.xxx
-target_backend: NPU
-problem_type: operator-gap
-known_evidence:
-  - The issue belongs to the ACLNN path on Ascend.
-```
-
-### Expected
-
-- explain the two ways first
-- explain the six builders, then focus on the NPU pair
-- apply the explicit rule that Ascend ACLNN belongs to the NPU Native path
-- route to `npu-native-builder`
-- explain why the native NPU path is the better fit
-
-## Case 5: Native vs Plugin ambiguity
+## Case 5: Case 5: CPU Ambiguity Handling
 
 ### Input
 
 ```text
-api_name: mindspore.mint.xxx
+api_name: mindspore.ops.CustomOp
 target_backend: CPU
 problem_type: operator-gap
 known_evidence:
-  - CPU backend is unsupported.
-  - No evidence yet distinguishes native from plugin.
+  - Unsupported on CPU.
 ```
 
 ### Expected
 
-- explain the two ways first
-- explain the six builders, then focus on the CPU pair
-- explicitly state the ambiguity
-- present both `cpu-native-builder` and `cpu-plugin-builder`
-- ask for the missing decision input instead of guessing
+- Identify Options: Present both cpu-plugin-builder and cpu-native-builder.
+- Proactive Recommendation: Explicitly recommend the Plugin path first due to its higher maturity.
+- Decision Signal: Ask the user if there are specific architectural reasons to choose the Native path over the recommended Plugin path.
+
+## Case 6: Mint API on NPU
+
+### Input
+
+```text
+api_name: mindspore.mint.abs
+target_backend: NPU
+problem_type: operator-gap
+```
+
+### Expected
+
+- Namespace Logic: Recognize that the mint namespace strongly implies the Native implementation path for NPU.
+- Maturity Alignment: Route to npu-native-builder as the established standard for NPU/Ascend.
+- Constraint Adherence: Ensure no implementation logic or kernel code is generated in the response.
