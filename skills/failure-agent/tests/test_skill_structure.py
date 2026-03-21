@@ -22,8 +22,8 @@ def test_recommended_use_routes_are_explicit():
     assert "### runtime failure" in text
     assert "### HCCL / NCCL / device communication issue" in text
     assert "### missing operator / unsupported path" in text
-    assert "search `known_failure` first" in text
-    assert "consult `operator`" in text
+    assert "search `known_issue` cards with `symptom: failure` first" in text
+    assert "read `cards/operators/*.yaml` and consult `operator`" in text
     assert "manual `report` candidate" in text
 
 
@@ -34,3 +34,4 @@ def test_boundary_and_exclusions_are_present():
     assert "environment bootstrapping only" in text
     assert "You MUST keep `failure-agent` at the triage and routing layer." in text
     assert "You MUST stop before source-level investigation, fix implementation, regression validation, or test authoring" in text
+

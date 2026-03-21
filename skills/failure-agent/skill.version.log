@@ -1,3 +1,35 @@
+2026-03-21 | failure-agent | version 0.5.x summary
+Summary:
+- The 0.5.x line turned `failure-agent` into a stable triage-and-routing skill for MindSpore and PTA with direct-read Factory alignment, local fallback references, and tighter dual-stack diagnosis rules.
+
+Series highlights:
+- `0.5.0`: established the direct-read `factory_root` path, `known_issue`/`operator` vocabulary, and manual-only Factory boundaries.
+- `0.5.1`: rebuilt `failure-showcase.md` into a `known_issue`-style fallback reference.
+- `0.5.2`: embedded the local MindSpore deeper-diagnosis handoff reference instead of relying on an external skill.
+- `0.5.3`: expanded fallback coverage for shared, MindSpore, and PTA runtime failure patterns.
+- `0.5.4`: aligned Stage 2 lookup with the first batch of real Factory failure cards.
+- `0.5.5`: refreshed lightweight references and tests around the current Factory-aligned routing anchors.
+- `0.5.6`: synced substantial material from `ms-failure-analyze` and `pta-failure-analyze`, and added the missing CANN/PTA topic references.
+- `0.5.7`: absorbed triage-safe MindSpore misleading-pattern and operator-routing knowledge from the local ops-debugger materials.
+- `0.5.8`: added environment normalization and contrast-check guidance for both MindSpore and PTA triage.
+- `0.5.9`: merged the small upstream PyTorch operator reference into the main PTA operator guide.
+- `0.5.10`: renamed the MindSpore API guide to `mindspore-api-reference.md`.
+- `0.5.11`: renamed the MindSpore deep-debug guide to `mindspore-dianosis.md`.
+- `0.5.12`: consolidated PTA fallback docs into the single `pta-diagnosis.md` reference.
+- `0.5.13`: aligned the remaining visible reference labels with the final local filenames.
+
+Reference surface at the end of 0.5.x:
+- `failure-showcase.md`
+- `backend-diagnosis.md`
+- `mindspore-api-reference.md`
+- `mindspore-dianosis.md`
+- `pta-diagnosis.md`
+- `cann-api-reference.md`
+
+Validation:
+- `python -m pytest d:\codex_workspace\mindspore-skills\skills\failure-agent\tests -q`
+- Result: 12 passed, 1 warning
+
 2026-03-19 | failure-agent | version 0.4.0
 Summary:
 - Reworked the dual-stack failure skill into an evidence-first manual diagnosis workflow aligned with ms-skills B1.2.

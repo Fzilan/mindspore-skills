@@ -40,6 +40,7 @@ Collect or request these minimum facts before diagnosis:
 - recent change since the last known good run
 - backend or hardware context: Ascend / GPU / CPU, single-card or distributed
 - environment or version facts relevant to the detected stack
+- `factory_root` if the runtime provides direct read access to Factory cards
 
 Required stack and platform detection:
 - identify `stack` as `ms` or `pta`
@@ -101,26 +102,53 @@ Also run one lightweight misleading-pattern sanity check:
 - check whether a precision symptom inside a runtime failure is masking a compile/runtime issue
 - check whether a frontend or context problem is being misread as an operator/backend fault
 - check whether an op failure is actually caused by mode, shape, or context preconditions
+- if the route is still ambiguous, use [mindspore-api-reference](reference/mindspore-api-reference.md) for API/mode/operator preconditions and [mindspore-dianosis](reference/mindspore-dianosis.md) for quick routing and misleading-pattern notes before escalating
 
 ## Stage 2: Knowledge Lookup First
 
 This stage is for existing knowledge lookup only. It does not replace validation.
 
 Ordered lookup:
-- if Factory query tooling is available, search `known_failure` first
-- if no `known_failure` matches, consult `operator`
-- if Factory query tooling is not available, check local [failure-showcase](reference/failure-showcase.md) first, then topic references
+- if `factory_root` is provided and readable, read `cards/known_issues/*.yaml` and search `known_issue` cards with `symptom: failure` first
+- if no `known_issue` matches, read `cards/operators/*.yaml` and consult `operator`
+- if Factory cards are unavailable or unreadable, check local [failure-showcase](reference/failure-showcase.md) first, then topic references
 
 Fallback references:
-- [error-codes](reference/error-codes.md) for explicit error codes
+- [pta-diagnosis](reference/pta-diagnosis.md) for PTA ERR decoding, runtime family routing, and operator-specific PTA constraints
 - [backend-diagnosis](reference/backend-diagnosis.md) for backend, runtime, and communication checks
-- [mindspore-api](reference/mindspore-api.md) for MindSpore API, mode, and framework constraints
-- [torch-npu-operators](reference/torch-npu-operators.md) for PTA and operator-specific constraints
+- [mindspore-api-reference](reference/mindspore-api-reference.md) for MindSpore API, mode, framework constraints, and high-frequency operator misreads
+- [mindspore-dianosis](reference/mindspore-dianosis.md) for quick MindSpore component routing, misleading-pattern checks, and deeper source-level follow-up when triage is no longer enough
 
 Knowledge lookup rules:
-- do not fabricate Factory lookups when tooling is unavailable
+- do not guess the Factory path; only use an explicitly provided `factory_root`
+- direct-read is read-only and transitional; do not turn it into a separate Factory protocol
+- when reading Factory directly, only use:
+  - `factory_root/cards/known_issues/*.yaml`
+  - `factory_root/cards/operators/*.yaml`
+- do not directly read `perf_features`, `algo_features`, `models`, or `reports` in this skill
+- when reading `known_issue`, prioritize:
+  - `symptom`
+  - `severity`
+  - `tags`
+  - `affects_platforms`
+  - `affects_operators`
+  - `detection.pattern`
+  - `description`
+  - `fix.summary`
+  - `fix.diff`
+  - `fix.operator_id`
+  - `source.kind`
+  - `confidence.level`
+- when reading `operator`, prioritize:
+  - `id`
+  - `name`
+  - `platforms`
+  - `fallback`
+  - `optimized_variant`
+  - `description`
+- do not fabricate Factory lookups when cards are unavailable
 - do not claim a knowledge hit unless the signature actually matches
-- local references are lightweight aids, not a complete knowledge base
+- local references are lightweight fallback aids, not a complete knowledge base
 
 If you find a strong match:
 - explain why it matches the current evidence
@@ -144,7 +172,7 @@ Canonical facts to surface before hypotheses:
 - `component`
 - environment or version facts
 - evidence source
-- knowledge-hit status: `known_failure`, `operator`, or `none`
+- knowledge-hit status: `known_issue`, `operator`, or `none`
 
 Diagnosis requirements:
 - identify the first error point, not just a downstream failure
@@ -156,7 +184,8 @@ Diagnosis requirements:
 MindSpore path guidance:
 - start with platform and script-level causes when logs indicate device, context, dtype, shape, or mode issues
 - check MindSpore framework constraints before blaming backend
-- if diagnosis now requires source-level investigation, historical issue mining beyond lightweight lookup, fix implementation, regression validation, or test authoring, hand off to `mindspore-ops-debugger`
+- if keywords such as `AbstractProblem`, `DeadNode`, `keyword_arg`, zero gradients, or intermittent core dumps make the route look misleading, use [mindspore-dianosis](reference/mindspore-dianosis.md) to stabilize the layer choice before going deeper
+- if diagnosis now requires source-level investigation, historical issue mining beyond lightweight lookup, fix implementation, regression validation, or test authoring, consult [mindspore-dianosis](reference/mindspore-dianosis.md) and keep the top-level `failure-agent` response at triage level
 
 PTA path guidance:
 - check version compatibility, operator registration, script misuse, and framework routing before going deep into CANN
@@ -183,15 +212,16 @@ Manual-only boundary:
 
 ## Factory Integration
 
-Use this order whenever the tooling exists:
-1. `known_failure`
+Use this order whenever `factory_root` is available:
+1. `known_issue`
 2. `operator`
 3. manual `report` candidate for novel failures
 
 Factory integration is advisory in this skill:
-- query when available
-- never pretend it ran when unavailable
+- read cards when available
+- never pretend card lookup ran when cards were unavailable
 - never claim automatic writeback
+- keep [failure-showcase](reference/failure-showcase.md) as a temporary fallback, not the primary knowledge source
 
 ## Required Behavior
 
@@ -200,6 +230,7 @@ Factory integration is advisory in this skill:
 - You MUST identify platform and version facts before proposing fixes.
 - You MUST surface assumptions and unknowns explicitly.
 - You MUST use ordered knowledge lookup before reasoning from scratch.
+- You MUST use `known_issue` as the machine-facing failure card kind when reading Factory cards.
 - You MUST include a validation check for every root-cause claim.
 - You MUST keep `failure-agent` at the triage and routing layer.
 - You MUST stop before source-level investigation, fix implementation, regression validation, or test authoring in the top-level `failure-agent` workflow.
@@ -213,7 +244,7 @@ Use this structure:
 3. Scenario route used
 4. Evidence snapshot
 5. Scoping result / evidence basis
-6. Knowledge hits (`known_failure` / `operator` / `none`)
+6. Knowledge hits (`known_issue` / `operator` / `none`)
 7. Most likely causes (ranked)
 8. Validation checks
 9. Recommended fixes
