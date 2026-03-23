@@ -160,9 +160,14 @@ def test_skill_uses_snapshot_download_when_no_local_model_directory_exists():
     assert "use `huggingface_hub.snapshot_download` inside the selected `uv` environment" in content
     assert "download into `<workdir>/models/<repo_name>` by default unless `model_root`" in content
     assert "is already specified" in content
+    assert "`HF_ENDPOINT=https://hf-mirror.com`" in content
+    assert "if the direct Hugging Face download fails because of DNS, timeout, proxy, or" in content
+    assert "other network reachability problems, retry with a China mirror" in content
     assert "if the repo is gated or private and authentication is missing, stop and" in content
+    assert "do not treat authentication or permission failures as mirror candidates" in content
     assert "report a download/auth failure" in content
     assert "snapshot_download(repo_id='org/model'" in content
+    assert "HF_ENDPOINT=https://hf-mirror.com uv run" in content
 
 
 def test_skill_checks_training_scripts_and_checkpoints_after_model_selection():
@@ -224,6 +229,7 @@ def test_skill_documents_console_only_contract():
     assert "- checkpoint files" in content
     assert "- matched training script paths" in content
     assert "- matched checkpoint paths" in content
+    assert "- China mirror fallback guidance using `HF_ENDPOINT=https://hf-mirror.com`" in content
     assert "- download/auth failure reason" in content
 
 
@@ -310,7 +316,7 @@ def test_manifest_matches_ascend_only_scope_and_permissions():
 def test_manifest_declares_uv_and_framework_inputs():
     manifest = read_yaml(SKILL_YAML)
     input_names = {item["name"] for item in manifest["inputs"]}
-    assert {"target", "frameworks", "task_type", "uv_env_mode", "python_version", "model_id", "model_root"} <= input_names
+    assert {"target", "frameworks", "task_type", "uv_env_mode", "python_version", "model_id", "model_root", "hf_endpoint"} <= input_names
 
 
 def test_root_agents_exposes_setup_agent():

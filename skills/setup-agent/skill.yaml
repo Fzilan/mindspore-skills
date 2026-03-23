@@ -52,6 +52,11 @@ inputs:
     required: false
     default: "./models"
     description: "Root directory under the current work dir where downloaded Hugging Face models are stored."
+  - name: "hf_endpoint"
+    type: "string"
+    required: false
+    default: "https://huggingface.co"
+    description: "Hugging Face endpoint to use for model download. Switch to a China mirror such as https://hf-mirror.com when direct download has network issues."
 
 permissions:
   network: "required"

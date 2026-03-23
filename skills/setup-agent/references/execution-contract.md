@@ -99,6 +99,8 @@ The console output must still cover:
   framework, or toolkit is missing
 - generic Hugging Face download guidance when training scripts or checkpoint
   files are missing from the current work dir
+- China mirror fallback guidance using `HF_ENDPOINT=https://hf-mirror.com`
+  when the Hugging Face download fails due to network reachability problems
 - download/auth failure reason when a Hugging Face model cannot be fetched
 
 Use only these status values:

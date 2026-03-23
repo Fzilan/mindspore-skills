@@ -640,6 +640,43 @@ Files changed:
      - Added checks for candidate training entry-script matching and the
        removal of the old broad `*.py` rule
 
+### 2026-03-23 - Hugging Face mirror fallback for China network paths
+
+Trigger:
+- Direct Hugging Face model downloads may fail in mainland China because of
+  DNS, timeout, or proxy reachability problems.
+- The setup flow needed an explicit, repeatable mirror fallback instead of
+  leaving download failures as generic network errors.
+
+Files changed:
+
+1. `skills/setup-agent/SKILL.md`
+   - Description: Main execution prompt used by the model
+   - Change:
+     - Added a retry rule that switches model download to
+       `HF_ENDPOINT=https://hf-mirror.com` when direct Hugging Face access fails
+       because of network reachability problems
+     - Added a mirror retry command example
+     - Clarified that auth and permission failures should not trigger the
+       mirror fallback
+
+2. `skills/setup-agent/references/execution-contract.md`
+   - Description: Runtime UX and reporting contract
+   - Change:
+     - Added explicit China mirror fallback guidance to the console contract
+
+3. `skills/setup-agent/skill.yaml`
+   - Description: Skill manifest
+   - Change:
+     - Added the optional `hf_endpoint` input with the public Hugging Face
+       endpoint as the default value
+
+4. `skills/setup-agent/tests/test_references.py`
+   - Description: Behavior-contract tests for the skill prompt and references
+   - Change:
+     - Added assertions for the mirror fallback rule, `HF_ENDPOINT` example,
+       and `hf_endpoint` manifest input
+
 ## Validation Performed
 
 The rework was validated with:

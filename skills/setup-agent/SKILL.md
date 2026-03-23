@@ -288,8 +288,12 @@ If no candidate model directory exists, or the user declines all candidates:
 - use `huggingface_hub.snapshot_download` inside the selected `uv` environment
 - download into `<workdir>/models/<repo_name>` by default unless `model_root`
   is already specified
+- if the direct Hugging Face download fails because of DNS, timeout, proxy, or
+  other network reachability problems, retry with a China mirror by setting
+  `HF_ENDPOINT=https://hf-mirror.com`
 - if the repo is gated or private and authentication is missing, stop and
   report a download/auth failure instead of guessing
+- do not treat authentication or permission failures as mirror candidates
 - after download, verify that the target directory exists and contains model
   markers before classifying it as usable
 
@@ -297,6 +301,12 @@ Example download pattern:
 
 ```bash
 uv run --python .venv/bin/python python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='org/model', local_dir='./models/model', local_dir_use_symlinks=False)"
+```
+
+Mirror retry pattern:
+
+```bash
+HF_ENDPOINT=https://hf-mirror.com uv run --python .venv/bin/python python -c "from huggingface_hub import snapshot_download; snapshot_download(repo_id='org/model', local_dir='./models/model', local_dir_use_symlinks=False)"
 ```
 
 Record whether the selected model came from:
