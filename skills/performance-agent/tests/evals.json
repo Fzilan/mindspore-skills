@@ -120,6 +120,12 @@
       "prompt": "Factory access is unavailable in my environment. For this Ascend training job, tell me that you cannot enumerate existing features from factory and let me choose whether to go straight to profiler collection instead.",
       "expected_output": "Handles factory unavailability explicitly, does not invent perf features, keeps the feature-trial path degraded, and still offers the profiler path as a valid next step.",
       "files": []
+    },
+    {
+      "id": 21,
+      "prompt": "The workspace is already prepared and we have run this MindSpore model before. Before you ask me a bunch of context questions, inspect the working directory for the previous launch script, config, checkpoint, logs, or profiler outputs, summarize the most likely baseline, and ask me to confirm it. If you cannot find a usable record, ask whether I want to rerun and confirm the script, config, and checkpoint first.",
+      "expected_output": "Starts by trying to recover the minimum context from local run artifacts instead of immediately asking a broad questionnaire, treats any inferred baseline as tentative until the user confirms it, and falls back to asking whether to rerun plus confirming the minimum runnable script/config/checkpoint set when no usable record is found.",
+      "files": []
     }
   ]
 }

@@ -37,7 +37,44 @@ Do not use this skill for:
 
 ## Top-Level Flow
 
-Always start by identifying the minimum context:
+Before asking the user a broad questionnaire, try to recover the minimum
+context from the prepared working directory.
+
+First read:
+
+- `references/context-recovery.md`
+
+Then:
+
+- inspect the current workspace for prior run evidence:
+  - entry scripts or launcher scripts
+  - model configs
+  - checkpoints
+  - logs with end-to-end metrics
+  - profiler exports or summaries
+- prefer `scripts/find_run_context.py --root <workdir>` for a first-pass scan
+  when available, then inspect the most relevant hits yourself
+- treat all inferred fields as tentative until the user confirms them
+- if one plausible baseline is found, summarize it compactly and ask the user
+  to confirm or correct it before entering either path
+- if multiple plausible baselines are found, present the top 1 to top 3
+  candidates and ask which run should be used
+- if the user already supplied exact script, config, checkpoint, and artifact
+  paths, skip the wide scan and validate only those paths
+- if no usable prior run record is found, ask whether the user wants to rerun a
+  comparable baseline
+- before any rerun, confirm at minimum:
+  - model entry script
+  - model config
+  - checkpoint
+  - training or inference
+  - single-card or distributed scale
+  - primary metric focus if known
+  - profiler trace or export path if it already exists
+- do not assume a discovered baseline is the right one until the user confirms
+  it
+
+After the recovery or confirmation step, identify the minimum context:
 
 - stack: `ms` or `pta`
 - platform: Ascend/NPU
@@ -45,6 +82,7 @@ Always start by identifying the minimum context:
 - single-card or distributed
 - primary metric focus: throughput, latency, or memory if known
 - whether profiler trace or export artifacts already exist
+- baseline script, config, checkpoint, and end-to-end metric evidence if found
 
 Then present the two main paths:
 
@@ -211,6 +249,11 @@ Automation boundaries are hard constraints:
 
 - stay on Ascend/NPU; do not drift into generic CUDA or CPU advice
 - identify stack early: `ms` or `pta`
+- try to recover the minimum context from local run artifacts before asking the
+  user a broad context questionnaire, unless the user already gave a complete
+  runnable baseline
+- confirm any discovered baseline with the user before assuming it is the right
+  run
 - keep Path 1 and Path 2 behavior distinct
 - in Path 2, prefer profiler evidence over up-front metric questionnaires
 - in Path 2, identify one dominant bottleneck before recommending changes
