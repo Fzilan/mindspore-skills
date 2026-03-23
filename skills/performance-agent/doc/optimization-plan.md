@@ -12,7 +12,13 @@ performance analysis across MindSpore and `torch_npu`.
 
 ## Current State
 
-The skill now supports a practical flow:
+The skill now supports two main runtime paths:
+
+1. trial existing performance features from the `ms-cli` factory knowledge
+   base
+2. run profiler-led bottleneck diagnosis and validation
+
+The profiler path still supports a practical flow:
 
 1. identify the real Python training entry script
 2. copy it to a `*-perf.py` sibling
@@ -32,6 +38,15 @@ real profiling samples.
 The older idea of wrapping the original command in a universal external
 `msprof` launcher should not be treated as the baseline design.
 
+The newer top-level design change is:
+
+- keep `Path 1` and `Path 2` explicit instead of hiding feature trials inside a
+  profiler-only flow
+- let users choose between low-cost feature trials and profiler evidence
+  collection
+- keep Path 1 output light and end-to-end metric focused
+- keep Path 2 output evidence-heavy and trace-driven
+
 ## Decision Log
 
 Current collection-automation decisions:
@@ -48,6 +63,34 @@ Current collection-automation decisions:
 - MindSpore `model.train(...)` style entries are currently treated as
   unsupported for automatic injection unless a project-proven safe pattern is
   introduced later
+
+Current path-structure decisions:
+
+- the skill now has two explicit top-level paths:
+  - trial existing performance features
+  - profile and diagnose bottlenecks
+- if the user intent is explicit, the skill may enter the requested path
+  directly
+- if the user intent is ambiguous, the skill should present the two path
+  choices and ask the user to pick one
+- if the user chooses Path 1 and runs a feature trial, the skill must ask after
+  each round whether to switch to Path 2
+- Path 1 must not claim a bottleneck is proven from end-to-end trial data alone
+- Path 2 keeps the existing profiler-led dominant-bottleneck workflow
+
+Current factory-integration decisions for Path 1:
+
+- prefer `ms-cli factory query ...` when available
+- otherwise fall back to `MS_FACTORY_PATH`
+- otherwise fall back to an explicitly provided local `incubating/factory`
+  path
+- Path 1 currently uses:
+  - `perf_feature`
+  - `model`
+- Path 1 currently does not use `known_issue` in the default workflow
+- matching model cards should prefer model + method + platform specificity
+- top recommendations should prioritize `model.verified_perf_features` before
+  generic compatible features
 
 ## Archived Detail from `SKILL.md`
 
@@ -167,6 +210,17 @@ Add evals that measure whether the skill:
 These evals should be built around realistic `msprof` sample summaries rather
 than abstract prompts only.
 
+The latest skill update also needs eval coverage for the new path split:
+
+- whether the skill keeps Path 1 and Path 2 distinct
+- whether explicit user intent can route directly into one path
+- whether ambiguous requests cause the skill to surface both paths
+- whether Path 1 stays lightweight and does not drift into fake bottleneck
+  claims
+- whether Path 1 asks after each round whether to move into Path 2
+- whether Path 2 still preserves the existing profiler-first discipline once
+  selected
+
 ### 6. Improve Controlled Collection Only After Analysis Stabilizes
 
 The current helper path should remain intentionally scaffolded, not fully
@@ -188,13 +242,17 @@ Only after that should you consider:
 
 ## Suggested Immediate Next Work
 
-If work resumes later, the best first two tasks are:
+If work resumes later, the best next tasks are:
 
-1. add an `msprof` result layout reference file
-2. build 3 to 5 quality eval cases from real profiling samples
+1. build quality evals for the new two-path structure
+2. collect 3 to 5 real profiling samples for Path 2 answer-quality checks
+3. tighten factory query integration so Path 1 uses a stable command or API
+   surface instead of prompt-level guesswork
+4. define whether and how `known_issue` should eventually participate in Path 1
+   filtering
 
-These two tasks will improve both the scripts and the skill outputs without
-prematurely locking in unstable automation.
+These tasks improve runtime stability without prematurely expanding automation
+in the profiler collection helpers.
 
 ## Notes
 
