@@ -1,2 +1,7 @@
 runs/
 examples/**/runs/
+skills/op-agent/
+
+# OS and Python cache artifacts
+.DS_Store
+__pycache__/
