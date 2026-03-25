@@ -40,6 +40,14 @@ inputs:
     type: "path"
     required: false
     description: "Explicit entry script when already known."
+  - name: "selected_python"
+    type: "path"
+    required: false
+    description: "Explicit Python interpreter to use for the workspace and readiness-agent helper execution."
+  - name: "selected_env_root"
+    type: "path"
+    required: false
+    description: "Explicit environment root whose Python should become the selected workspace interpreter."
   - name: "config_path"
     type: "path"
     required: false

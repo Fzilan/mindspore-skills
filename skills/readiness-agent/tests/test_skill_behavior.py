@@ -9,6 +9,7 @@ def test_behavior_rules_require_target_and_revalidation_reasoning():
     assert "Certification is for a specific intended task" in text
     assert "Only fix what is required by the selected execution target." in text
     assert "After every successful mutation, rerun affected checks before final status." in text
+    assert "use it consistently for downstream helper execution" in text
     assert "final `revalidated=true` requires the" in text
     assert "current deterministic pipeline" in text
     assert "`READY` should be reserved for cases where the evidence is strong enough" in text
@@ -21,6 +22,7 @@ def test_references_and_scripts_are_declared():
     assert "`references/blocker-taxonomy.md`" in text
     assert "`references/dependency-closure.md`" in text
     assert "`references/env-fix-policy.md`" in text
+    assert "`scripts/resolve_selected_python.py`" in text
     assert "`scripts/discover_execution_target.py`" in text
     assert "`scripts/build_dependency_closure.py`" in text
     assert "`scripts/collect_readiness_checks.py`" in text

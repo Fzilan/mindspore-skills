@@ -50,6 +50,8 @@ def test_end_to_end_pipeline_reaches_warn_for_ambiguous_or_incomplete_workspace(
         "discover_execution_target.py",
         "--working-dir",
         str(workspace),
+        "--selected-python",
+        sys.executable,
         "--output-json",
         str(target_json),
     )
@@ -160,6 +162,8 @@ def test_end_to_end_pipeline_reaches_ready_with_strong_evidence_and_no_blockers(
         str(workspace),
         "--target",
         "inference",
+        "--selected-python",
+        sys.executable,
         "--model-path",
         "model",
         "--task-smoke-cmd",

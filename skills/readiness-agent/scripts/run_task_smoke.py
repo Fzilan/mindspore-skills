@@ -3,26 +3,26 @@ import argparse
 import json
 import shlex
 import subprocess
-import sys
 from pathlib import Path
+from typing import List, Optional, Tuple
 
 
 def make_check(
     check_id: str,
     status: str,
     summary: str,
-    evidence: list[str] | None = None,
+    evidence: Optional[List[str]] = None,
     *,
-    category_hint: str | None = None,
-    severity: str | None = None,
-    remediable: bool | None = None,
-    remediation_owner: str | None = None,
-    revalidation_scope: list[str] | None = None,
-    command_preview: str | None = None,
-    exit_code: int | None = None,
-    stdout_head: str | None = None,
-    stderr_head: str | None = None,
-    timed_out: bool | None = None,
+    category_hint: Optional[str] = None,
+    severity: Optional[str] = None,
+    remediable: Optional[bool] = None,
+    remediation_owner: Optional[str] = None,
+    revalidation_scope: Optional[List[str]] = None,
+    command_preview: Optional[str] = None,
+    exit_code: Optional[int] = None,
+    stdout_head: Optional[str] = None,
+    stderr_head: Optional[str] = None,
+    timed_out: Optional[bool] = None,
 ) -> dict:
     payload = {
         "id": check_id,
@@ -53,7 +53,7 @@ def make_check(
     return payload
 
 
-def head_line(text: str | None) -> str | None:
+def head_line(text: Optional[str]) -> Optional[str]:
     if not text:
         return None
     stripped = text.strip()
@@ -62,11 +62,11 @@ def head_line(text: str | None) -> str | None:
     return stripped.splitlines()[0]
 
 
-def format_command(command: list[str]) -> str:
+def format_command(command: List[str]) -> str:
     return " ".join(shlex.quote(part) for part in command)
 
 
-def resolve_entry_script(target: dict, root: Path) -> Path | None:
+def resolve_entry_script(target: dict, root: Path) -> Optional[Path]:
     entry_script = target.get("entry_script")
     if not entry_script:
         return None
@@ -76,12 +76,20 @@ def resolve_entry_script(target: dict, root: Path) -> Path | None:
     return path
 
 
-def resolve_probe_python(closure: dict) -> str:
+def resolve_probe_python(closure: dict) -> Tuple[Optional[str], Optional[str]]:
     python_env = closure.get("layers", {}).get("python_environment", {})
-    return python_env.get("probe_python_path") or sys.executable
+    return python_env.get("probe_python_path"), python_env.get("selection_reason")
 
 
-def run_script_parse_smoke(entry_script: Path | None, probe_python: str, root: Path) -> dict:
+def run_script_parse_smoke(entry_script: Optional[Path], probe_python: Optional[str], root: Path, missing_reason: Optional[str]) -> dict:
+    if not probe_python:
+        return make_check(
+            "task-smoke-script-parse",
+            "skipped",
+            "Task smoke script-parse step is skipped because selected Python is unavailable.",
+            evidence=[missing_reason] if missing_reason else [],
+        )
+
     if not entry_script or not entry_script.exists():
         return make_check(
             "task-smoke-script-parse",
@@ -173,7 +181,7 @@ def run_script_parse_smoke(entry_script: Path | None, probe_python: str, root: P
     )
 
 
-def build_smoke_command(smoke_cmd: str, probe_python: str) -> list[str]:
+def build_smoke_command(smoke_cmd: str, probe_python: str) -> List[str]:
     parts = shlex.split(smoke_cmd)
     if not parts:
         return []
@@ -191,7 +199,14 @@ def run_explicit_task_smoke(target: dict, closure: dict, root: Path, timeout_sec
             "No explicit task smoke command is available for this execution target.",
         )
 
-    probe_python = resolve_probe_python(closure)
+    probe_python, missing_reason = resolve_probe_python(closure)
+    if not probe_python:
+        return make_check(
+            "task-smoke-executed",
+            "skipped",
+            "Explicit task smoke is skipped because selected Python is unavailable.",
+            evidence=[missing_reason] if missing_reason else [],
+        )
     command = build_smoke_command(str(smoke_cmd), probe_python)
     if not command:
         return make_check(
@@ -281,12 +296,12 @@ def run_explicit_task_smoke(target: dict, closure: dict, root: Path, timeout_sec
     )
 
 
-def run_task_smoke(target: dict, closure: dict, timeout_seconds: int) -> list[dict]:
+def run_task_smoke(target: dict, closure: dict, timeout_seconds: int) -> List[dict]:
     root = Path(target["working_dir"]).resolve()
-    probe_python = resolve_probe_python(closure)
+    probe_python, missing_reason = resolve_probe_python(closure)
     entry_script = resolve_entry_script(target, root)
     checks = [
-        run_script_parse_smoke(entry_script, probe_python, root),
+        run_script_parse_smoke(entry_script, probe_python, root, missing_reason),
         run_explicit_task_smoke(target, closure, root, timeout_seconds),
     ]
     return checks

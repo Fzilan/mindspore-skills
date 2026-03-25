@@ -2,6 +2,7 @@
 import argparse
 import json
 from pathlib import Path
+from typing import List, Optional, Tuple
 
 
 BLOCKER_CATEGORY_DEFAULTS = {
@@ -14,16 +15,16 @@ BLOCKER_CATEGORY_DEFAULTS = {
 }
 
 
-def normalize_category(category_hint: str | None) -> tuple[str, bool, str]:
+def normalize_category(category_hint: Optional[str]) -> Tuple[str, bool, str]:
     if not category_hint:
         return BLOCKER_CATEGORY_DEFAULTS["unknown"]
     key = category_hint.strip().lower()
     return BLOCKER_CATEGORY_DEFAULTS.get(key, BLOCKER_CATEGORY_DEFAULTS["unknown"])
 
 
-def normalize_checks(checks: list[dict]) -> dict:
-    blockers_detailed: list[dict] = []
-    warnings_detailed: list[dict] = []
+def normalize_checks(checks: List[dict]) -> dict:
+    blockers_detailed: List[dict] = []
+    warnings_detailed: List[dict] = []
 
     for idx, check in enumerate(checks, 1):
         status = (check.get("status") or "").strip().lower()

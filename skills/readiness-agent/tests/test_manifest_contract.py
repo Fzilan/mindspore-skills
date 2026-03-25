@@ -28,6 +28,8 @@ def test_manifest_declares_target_and_fix_inputs():
     assert 'choices: ["training", "inference", "auto"]' in text
     assert 'name: "mode"' in text
     assert 'choices: ["check", "fix", "auto"]' in text
+    assert 'name: "selected_python"' in text
+    assert 'name: "selected_env_root"' in text
     assert 'name: "allow_network"' in text
     assert 'name: "fix_scope"' in text
     assert 'choices: ["none", "safe-user-space"]' in text
@@ -40,11 +42,12 @@ def test_manifest_declares_target_and_fix_inputs():
 def test_skill_describes_certification_workflow():
     text = SKILL.read_text(encoding="utf-8")
     assert "# Readiness Agent" in text
-    assert "1. `execution-target-discovery`" in text
-    assert "2. `dependency-closure-builder`" in text
-    assert "3. `task-smoke-precheck` when a safe explicit smoke command exists" in text
-    assert "4. `compatibility-validator`" in text
-    assert "5. `blocker-classifier`" in text
-    assert "6. `env-fix` when allowed and needed" in text
-    assert "7. `revalidator-and-report-builder`" in text
+    assert "1. `selected-python-resolution`" in text
+    assert "2. `execution-target-discovery`" in text
+    assert "3. `dependency-closure-builder`" in text
+    assert "4. `task-smoke-precheck` when a safe explicit smoke command exists" in text
+    assert "5. `compatibility-validator`" in text
+    assert "6. `blocker-classifier`" in text
+    assert "7. `env-fix` when allowed and needed" in text
+    assert "8. `revalidator-and-report-builder`" in text
     assert "overall status: `READY`, `WARN`, or `BLOCKED`" in text

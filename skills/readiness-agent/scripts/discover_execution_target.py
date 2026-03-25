@@ -2,6 +2,9 @@
 import argparse
 import json
 from pathlib import Path
+from typing import List, Optional, Tuple
+
+from python_selection import resolve_selected_python
 
 
 TRAINING_SCRIPT_NAMES = {
@@ -28,7 +31,7 @@ def read_text(path: Path) -> str:
         return ""
 
 
-def normalize_target_hint(value: str | None) -> str | None:
+def normalize_target_hint(value: Optional[str]) -> Optional[str]:
     if not value:
         return None
     value = value.strip().lower()
@@ -37,7 +40,7 @@ def normalize_target_hint(value: str | None) -> str | None:
     return None
 
 
-def infer_framework(text: str) -> str | None:
+def infer_framework(text: str) -> Optional[str]:
     lower = text.lower()
     has_mindspore = "import mindspore" in lower or "from mindspore" in lower
     has_pta = (
@@ -55,9 +58,9 @@ def infer_framework(text: str) -> str | None:
     return None
 
 
-def score_script(path: Path, root: Path) -> tuple[int, list[str], str | None, str | None]:
+def score_script(path: Path, root: Path) -> Tuple[int, List[str], Optional[str], Optional[str]]:
     score = 0
-    reasons: list[str] = []
+    reasons: List[str] = []
     framework = None
     target_type = None
 
@@ -109,8 +112,8 @@ def score_script(path: Path, root: Path) -> tuple[int, list[str], str | None, st
     return score, reasons, framework, target_type
 
 
-def find_candidate_scripts(root: Path) -> list[Path]:
-    candidates: list[Path] = []
+def find_candidate_scripts(root: Path) -> List[Path]:
+    candidates: List[Path] = []
     for path in sorted(root.rglob("*")):
         if not path.is_file():
             continue
@@ -122,8 +125,8 @@ def find_candidate_scripts(root: Path) -> list[Path]:
     return candidates
 
 
-def find_candidate_configs(root: Path) -> list[Path]:
-    candidates: list[Path] = []
+def find_candidate_configs(root: Path) -> List[Path]:
+    candidates: List[Path] = []
     for path in sorted(root.rglob("*")):
         if not path.is_file():
             continue
@@ -135,8 +138,8 @@ def find_candidate_configs(root: Path) -> list[Path]:
     return candidates
 
 
-def find_model_markers(root: Path) -> list[str]:
-    markers: list[str] = []
+def find_model_markers(root: Path) -> List[str]:
+    markers: List[str] = []
     names = {
         "config.json",
         "tokenizer.json",
@@ -151,7 +154,7 @@ def find_model_markers(root: Path) -> list[str]:
     return markers[:20]
 
 
-def choose_config(configs: list[Path], entry_script: Path | None, root: Path) -> str | None:
+def choose_config(configs: List[Path], entry_script: Optional[Path], root: Path) -> Optional[str]:
     if not configs:
         return None
     if entry_script:
@@ -173,20 +176,27 @@ def choose_config(configs: list[Path], entry_script: Path | None, root: Path) ->
 
 def build_execution_target(
     root: Path,
-    target_hint: str | None,
-    entry_script_hint: Path | None,
-    config_path_hint: Path | None,
-    model_path_hint: Path | None,
-    dataset_path_hint: Path | None,
-    checkpoint_path_hint: Path | None,
-    task_smoke_cmd_hint: str | None,
+    target_hint: Optional[str],
+    entry_script_hint: Optional[Path],
+    config_path_hint: Optional[Path],
+    model_path_hint: Optional[Path],
+    dataset_path_hint: Optional[Path],
+    checkpoint_path_hint: Optional[Path],
+    task_smoke_cmd_hint: Optional[str],
+    selected_python_hint: Optional[str],
+    selected_env_root_hint: Optional[str],
 ) -> dict:
-    evidence: list[str] = []
+    evidence: List[str] = []
     candidate_scripts = find_candidate_scripts(root)
     configs = find_candidate_configs(root)
     markers = find_model_markers(root)
+    python_selection = resolve_selected_python(
+        root=root,
+        selected_python=selected_python_hint,
+        selected_env_root=selected_env_root_hint,
+    )
 
-    chosen_script: Path | None = None
+    chosen_script: Optional[Path] = None
     framework_path = None
     discovered_target = target_hint
 
@@ -197,7 +207,7 @@ def build_execution_target(
         framework_path = infer_framework(script_text)
         discovered_target = discovered_target or score_script(chosen_script, root)[3]
     else:
-        ranked: list[tuple[int, Path, list[str], str | None, str | None]] = []
+        ranked: List[Tuple[int, Path, List[str], Optional[str], Optional[str]]] = []
         for candidate in candidate_scripts:
             score, reasons, framework, target_type = score_script(candidate, root)
             if score <= 0:
@@ -249,6 +259,12 @@ def build_execution_target(
         "model_path": str(model_path_hint) if model_path_hint else None,
         "dataset_path": str(dataset_path_hint) if dataset_path_hint else None,
         "checkpoint_path": str(checkpoint_path_hint) if checkpoint_path_hint else None,
+        "selected_python": python_selection.get("selected_python"),
+        "selected_env_root": python_selection.get("selected_env_root"),
+        "selected_python_source": python_selection.get("selection_source"),
+        "selected_python_status": python_selection.get("selection_status"),
+        "selected_python_reason": python_selection.get("selection_reason"),
+        "selected_python_version": python_selection.get("python_version"),
         "task_smoke_cmd": task_smoke_cmd_hint,
         "output_path": None,
         "evidence": evidence,
@@ -271,6 +287,8 @@ def main() -> int:
     parser.add_argument("--model-path", help="explicit model path")
     parser.add_argument("--dataset-path", help="explicit dataset path")
     parser.add_argument("--checkpoint-path", help="explicit checkpoint path")
+    parser.add_argument("--selected-python", help="explicit Python interpreter for the workspace")
+    parser.add_argument("--selected-env-root", help="explicit environment root for the workspace")
     parser.add_argument("--task-smoke-cmd", help="explicit minimal task smoke command")
     parser.add_argument("--output-json", required=True, help="path to write execution target JSON")
     args = parser.parse_args()
@@ -285,6 +303,8 @@ def main() -> int:
         dataset_path_hint=Path(args.dataset_path) if args.dataset_path else None,
         checkpoint_path_hint=Path(args.checkpoint_path) if args.checkpoint_path else None,
         task_smoke_cmd_hint=args.task_smoke_cmd,
+        selected_python_hint=args.selected_python,
+        selected_env_root_hint=args.selected_env_root,
     )
     output = Path(args.output_json)
     output.write_text(json.dumps(result, indent=2), encoding="utf-8")

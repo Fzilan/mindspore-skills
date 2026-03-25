@@ -2,16 +2,17 @@
 import argparse
 import json
 from pathlib import Path
+from typing import List, Optional
 
 
-def describe_probe_source(probe_source: str | None) -> str:
+def describe_probe_source(probe_source: Optional[str]) -> str:
     mapping = {
         "selected_env": "selected environment",
-        "selected_env_missing_python": "selected environment",
+        "explicit_env": "selected environment",
+        "workspace_env": "selected environment",
         "explicit_python": "selected Python interpreter",
-        "current_interpreter": "current interpreter",
     }
-    return mapping.get(probe_source or "", "current interpreter")
+    return mapping.get(probe_source or "", "selected Python interpreter")
 
 
 def make_check(
@@ -19,12 +20,12 @@ def make_check(
     status: str,
     summary: str,
     *,
-    category_hint: str | None = None,
-    severity: str | None = None,
-    remediable: bool | None = None,
-    remediation_owner: str | None = None,
-    revalidation_scope: list[str] | None = None,
-    evidence: list[str] | None = None,
+    category_hint: Optional[str] = None,
+    severity: Optional[str] = None,
+    remediable: Optional[bool] = None,
+    remediation_owner: Optional[str] = None,
+    revalidation_scope: Optional[List[str]] = None,
+    evidence: Optional[List[str]] = None,
 ) -> dict:
     payload = {
         "id": check_id,
@@ -45,8 +46,8 @@ def make_check(
     return payload
 
 
-def collect_checks(target: dict, closure: dict) -> list[dict]:
-    checks: list[dict] = []
+def collect_checks(target: dict, closure: dict) -> List[dict]:
+    checks: List[dict] = []
     target_type = target.get("target_type") or "unknown"
     framework_layer = closure.get("layers", {}).get("framework", {})
     framework_path = framework_layer.get("framework_path", "unknown")
@@ -55,6 +56,9 @@ def collect_checks(target: dict, closure: dict) -> list[dict]:
     python_env = closure.get("layers", {}).get("python_environment", {})
     workspace = closure.get("layers", {}).get("workspace_assets", {})
     selected_env_root = python_env.get("selected_env_root")
+    selected_python = python_env.get("selected_python")
+    selection_status = python_env.get("selection_status")
+    selection_reason = python_env.get("selection_reason")
     probe_source = python_env.get("probe_source")
     probe_python_path = python_env.get("probe_python_path")
 
@@ -153,30 +157,40 @@ def collect_checks(target: dict, closure: dict) -> list[dict]:
             )
         )
 
-    if selected_env_root and probe_source == "selected_env":
+    if selection_status == "selected" and probe_python_path:
         checks.append(
             make_check(
-                "python-selected-env",
+                "python-selected-python",
                 "ok",
-                "Selected environment is resolved and probeable.",
+                "Selected Python is resolved and probeable.",
                 evidence=[
-                    f"selected_env_root={selected_env_root}",
+                    f"selected_python={selected_python}",
                     f"probe_python_path={probe_python_path}",
+                    f"probe_source={probe_source}",
                 ],
             )
         )
-    elif selected_env_root and probe_source == "selected_env_missing_python":
+    else:
+        evidence = []
+        if selected_env_root:
+            evidence.append(f"selected_env_root={selected_env_root}")
+        if selected_python:
+            evidence.append(f"selected_python={selected_python}")
+        if probe_source:
+            evidence.append(f"probe_source={probe_source}")
+        if selection_reason:
+            evidence.append(f"selection_reason={selection_reason}")
         checks.append(
             make_check(
-                "python-selected-env",
+                "python-selected-python",
                 "block",
-                "Selected environment is missing a usable Python executable.",
+                "Selected Python is unavailable or unusable for readiness checks.",
                 category_hint="env",
                 severity="high",
                 remediable=True,
                 remediation_owner="readiness-agent",
                 revalidation_scope=["python-environment", "framework"],
-                evidence=[f"selected_env_root={selected_env_root}"],
+                evidence=evidence or ["selected_python is unresolved"],
             )
         )
 

@@ -4,13 +4,14 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+from typing import List, Optional, Tuple
 
 
 UV_INSTALL_CMD = "curl -LsSf https://astral.sh/uv/install.sh | sh"
 UV_BIN_DIR = "$HOME/.local/bin"
 
 
-def load_actions(path: Path) -> list[dict]:
+def load_actions(path: Path) -> List[dict]:
     data = json.loads(path.read_text(encoding="utf-8"))
     return data.get("actions", [])
 
@@ -25,7 +26,7 @@ def append_path_export(profile_path: Path) -> None:
     profile_path.write_text(existing + prefix + line + "\n", encoding="utf-8")
 
 
-def ensure_uv_env(selected_env_root: Path, python_version: str | None) -> tuple[bool, str]:
+def ensure_uv_env(selected_env_root: Path, python_version: Optional[str]) -> Tuple[bool, str]:
     uv_path = shutil.which("uv")
     if not uv_path:
         return False, "uv is not directly resolvable"
@@ -43,7 +44,7 @@ def selected_python_path(env_root: Path) -> Path:
     return env_root / "bin" / "python"
 
 
-def install_runtime_dependency(env_root: Path, package_name: str) -> tuple[bool, str]:
+def install_runtime_dependency(env_root: Path, package_name: str) -> Tuple[bool, str]:
     uv_path = shutil.which("uv")
     if not uv_path:
         return False, "uv is not directly resolvable"
@@ -58,7 +59,7 @@ def install_runtime_dependency(env_root: Path, package_name: str) -> tuple[bool,
     return True, f"installed {package_name}"
 
 
-def install_packages(env_root: Path, package_names: list[str]) -> tuple[bool, str]:
+def install_packages(env_root: Path, package_names: List[str]) -> Tuple[bool, str]:
     uv_path = shutil.which("uv")
     if not uv_path:
         return False, "uv is not directly resolvable"

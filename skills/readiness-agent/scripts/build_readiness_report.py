@@ -3,13 +3,14 @@ import argparse
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import List, Optional, Set, Tuple
 from uuid import uuid4
 
 
 READY_LEVELS = {"runtime_smoke", "task_smoke"}
 
 
-def derive_evidence_level(checks: list[dict]) -> str:
+def derive_evidence_level(checks: List[dict]) -> str:
     ok_ids = {
         str(item.get("id"))
         for item in checks
@@ -25,14 +26,14 @@ def derive_evidence_level(checks: list[dict]) -> str:
     return "structural"
 
 
-def check_by_id(checks: list[dict], check_id: str) -> dict | None:
+def check_by_id(checks: List[dict], check_id: str) -> Optional[dict]:
     for item in checks:
         if str(item.get("id")) == check_id:
             return item
     return None
 
 
-def interpret_task_smoke_state(target: dict, checks: list[dict]) -> str:
+def interpret_task_smoke_state(target: dict, checks: List[dict]) -> str:
     if not target.get("task_smoke_cmd"):
         return "not_requested"
 
@@ -50,12 +51,12 @@ def interpret_task_smoke_state(target: dict, checks: list[dict]) -> str:
     return "unknown"
 
 
-def scopes_for_check(check_id: str) -> set[str]:
+def scopes_for_check(check_id: str) -> Set[str]:
     if check_id in {"system-device", "system-ascend-env"}:
         return {"system"}
     if check_id == "python-uv":
         return {"tool-resolution", "python-environment"}
-    if check_id == "python-selected-env":
+    if check_id in {"python-selected-env", "python-selected-python"}:
         return {"python-environment"}
     if check_id in {"framework-path", "framework-importability", "framework-smoke-prerequisite"}:
         return {"framework"}
@@ -70,7 +71,7 @@ def scopes_for_check(check_id: str) -> set[str]:
     return set()
 
 
-def derive_revalidation_state(fix_applied: dict, checks: list[dict]) -> tuple[bool, list[str], list[str]]:
+def derive_revalidation_state(fix_applied: dict, checks: List[dict]) -> Tuple[bool, List[str], List[str]]:
     executed_actions = fix_applied.get("executed_actions", [])
     if not executed_actions:
         return True, [], []
@@ -94,9 +95,9 @@ def synthesize_user_result(
     target: dict,
     normalized: dict,
     evidence_level: str,
-    checks: list[dict],
+    checks: List[dict],
     revalidated: bool,
-) -> tuple[str, bool, str, str]:
+) -> Tuple[str, bool, str, str]:
     blockers = normalized.get("blockers_detailed", [])
     warnings = normalized.get("warnings_detailed", [])
     target_type = target.get("target_type") or "unknown"
@@ -181,7 +182,7 @@ def build_report(
     normalized: dict,
     evidence_level: str,
     fix_applied: dict,
-    checks: list[dict],
+    checks: List[dict],
     dependency_closure: dict,
 ) -> dict:
     effective_evidence_level = derive_evidence_level(checks) if evidence_level == "auto" else evidence_level
@@ -227,7 +228,7 @@ def now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def resolve_verdict_output_path(output_json: Path, explicit: str | None) -> Path:
+def resolve_verdict_output_path(output_json: Path, explicit: Optional[str]) -> Path:
     if explicit:
         return Path(explicit)
     return output_json.parent / "meta" / "readiness-verdict.json"

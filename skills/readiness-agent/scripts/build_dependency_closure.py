@@ -3,8 +3,10 @@ import argparse
 import json
 import shutil
 import subprocess
-import sys
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+from python_selection import resolve_selected_python
 
 
 RUNTIME_IMPORT_CANDIDATES = {
@@ -18,20 +20,6 @@ RUNTIME_IMPORT_CANDIDATES = {
     "safetensors",
     "diffusers",
 }
-
-WORKSPACE_ENV_CANDIDATES = (
-    ".venv",
-    "venv",
-    ".env",
-    "env",
-)
-
-PYTHON_RELATIVE_CANDIDATES = (
-    Path("bin/python"),
-    Path("bin/python3"),
-    Path("Scripts/python.exe"),
-    Path("Scripts/python"),
-)
 
 PROBE_CODE = """
 import importlib.util
@@ -84,16 +72,7 @@ def read_text(path: Path) -> str:
         return ""
 
 
-def resolve_optional_path(value: str | None, root: Path) -> Path | None:
-    if not value:
-        return None
-    path = Path(value)
-    if not path.is_absolute():
-        path = root / path
-    return path
-
-
-def extract_runtime_imports(entry_script: Path | None) -> list[str]:
+def extract_runtime_imports(entry_script: Optional[Path]) -> List[str]:
     if not entry_script or not entry_script.exists():
         return []
     text = read_text(entry_script)
@@ -104,7 +83,7 @@ def extract_runtime_imports(entry_script: Path | None) -> list[str]:
     return found
 
 
-def detect_output_path(target: dict, root: Path, entry_script: Path | None) -> str | None:
+def detect_output_path(target: dict, root: Path, entry_script: Optional[Path]) -> Optional[str]:
     if target.get("output_path"):
         return str(target["output_path"])
     if entry_script:
@@ -124,43 +103,11 @@ def build_system_layer() -> dict:
     }
 
 
-def discover_selected_env_root(target: dict, root: Path) -> tuple[Path | None, str | None]:
-    explicit = resolve_optional_path(target.get("selected_env_root"), root)
-    if explicit:
-        return explicit, "explicit_input"
-
-    for candidate in WORKSPACE_ENV_CANDIDATES:
-        path = root / candidate
-        if path.exists() and path.is_dir():
-            return path, "workspace_inference"
-    return None, None
-
-
-def resolve_probe_python(
-    target: dict,
-    root: Path,
-    selected_env_root: Path | None,
-) -> tuple[Path | None, str]:
-    explicit_python = resolve_optional_path(target.get("selected_python"), root)
-    if explicit_python:
-        return explicit_python, "explicit_python"
-
-    if selected_env_root:
-        for candidate in PYTHON_RELATIVE_CANDIDATES:
-            python_path = selected_env_root / candidate
-            if python_path.exists() and python_path.is_file():
-                return python_path, "selected_env"
-        return None, "selected_env_missing_python"
-
-    current_python = Path(sys.executable).resolve()
-    return current_python, "current_interpreter"
-
-
 def run_json_probe_with_python(
     python_path: Path,
     mode: str,
     payload: dict,
-) -> tuple[dict, str | None]:
+) -> Tuple[dict, Optional[str]]:
     try:
         completed = subprocess.run(
             [str(python_path), "-c", PROBE_CODE, mode, json.dumps(payload)],
@@ -182,7 +129,7 @@ def run_json_probe_with_python(
     return result, None
 
 
-def run_import_probe_with_python(python_path: Path, packages: list[str]) -> tuple[dict[str, bool], str | None]:
+def run_import_probe_with_python(python_path: Path, packages: List[str]) -> Tuple[Dict[str, bool], Optional[str]]:
     if not packages:
         return {}, None
 
@@ -200,7 +147,7 @@ def run_import_probe_with_python(python_path: Path, packages: list[str]) -> tupl
 def run_framework_smoke_with_python(
     python_path: Path,
     framework_path: str,
-) -> tuple[dict, str | None]:
+) -> Tuple[dict, Optional[str]]:
     result, error = run_json_probe_with_python(
         python_path,
         "framework_smoke",
@@ -220,7 +167,7 @@ def run_framework_smoke_with_python(
     }, None
 
 
-def probe_imports(packages: list[str], python_layer: dict) -> tuple[dict[str, bool], str | None]:
+def probe_imports(packages: List[str], python_layer: dict) -> Tuple[Dict[str, bool], Optional[str]]:
     if not packages:
         return {}, None
 
@@ -260,24 +207,34 @@ def probe_framework_smoke(framework_path: str, python_layer: dict, import_probes
 
 def build_python_layer(target: dict, root: Path) -> dict:
     uv_path = shutil.which("uv")
-    selected_env_root, selected_env_source = discover_selected_env_root(target, root)
-    probe_python_path, probe_source = resolve_probe_python(target, root, selected_env_root)
+    selection = resolve_selected_python(
+        root=root,
+        selected_python=target.get("selected_python"),
+        selected_env_root=target.get("selected_env_root"),
+    )
+    selection_status = str(selection.get("selection_status") or "missing")
+    probe_python_path = selection.get("selected_python") if selection_status == "selected" else None
     return {
         "tooling": {
             "uv_path": uv_path,
             "uv_available": bool(uv_path),
         },
-        "selected_env_root": str(selected_env_root) if selected_env_root else None,
-        "selected_env_source": selected_env_source,
-        "probe_python_path": str(probe_python_path) if probe_python_path else None,
-        "probe_source": probe_source,
-        "python_path": str(probe_python_path) if probe_python_path else (shutil.which("python3") or shutil.which("python")),
+        "selected_env_root": selection.get("selected_env_root"),
+        "selected_python": selection.get("selected_python"),
+        "selection_status": selection_status,
+        "selection_reason": selection.get("selection_reason"),
+        "selection_source": selection.get("selection_source"),
+        "python_version": selection.get("python_version"),
+        "helper_python_compatible": selection.get("helper_python_compatible"),
+        "probe_python_path": probe_python_path,
+        "probe_source": selection.get("selection_source"),
+        "python_path": probe_python_path,
     }
 
 
 def build_framework_layer(target: dict, python_layer: dict) -> dict:
     framework_path = target.get("framework_path") or "unknown"
-    required_packages: list[str] = []
+    required_packages: List[str] = []
     if framework_path == "mindspore":
         required_packages = ["mindspore"]
     elif framework_path == "pta":
@@ -298,7 +255,7 @@ def build_framework_layer(target: dict, python_layer: dict) -> dict:
     }
 
 
-def build_runtime_layer(entry_script: Path | None, python_layer: dict) -> dict:
+def build_runtime_layer(entry_script: Optional[Path], python_layer: dict) -> dict:
     required_imports = extract_runtime_imports(entry_script)
     import_probes, probe_error = probe_imports(required_imports, python_layer)
     return {
@@ -310,8 +267,8 @@ def build_runtime_layer(entry_script: Path | None, python_layer: dict) -> dict:
     }
 
 
-def build_workspace_layer(target: dict, root: Path, target_type: str, entry_script: Path | None) -> dict:
-    def file_state(value: str | None) -> dict:
+def build_workspace_layer(target: dict, root: Path, target_type: str, entry_script: Optional[Path]) -> dict:
+    def file_state(value: Optional[str]) -> dict:
         if not value:
             return {"path": None, "exists": False, "required": False}
         path = Path(value)

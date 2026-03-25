@@ -48,6 +48,25 @@ def test_discover_execution_target_finds_training_script(tmp_path: Path):
     assert target["confidence"] in {"medium", "high"}
 
 
+def test_resolve_selected_python_prefers_explicit_python(tmp_path: Path):
+    output = tmp_path / "selected-python.json"
+
+    run_script(
+        "resolve_selected_python.py",
+        "--working-dir",
+        str(tmp_path),
+        "--selected-python",
+        sys.executable,
+        "--output-json",
+        str(output),
+    )
+    selected = json.loads(output.read_text(encoding="utf-8"))
+    assert selected["selection_status"] == "selected"
+    assert selected["selection_source"] == "explicit_python"
+    assert selected["selected_python"] == sys.executable
+    assert selected["helper_python_compatible"] is True
+
+
 def test_discover_execution_target_preserves_task_smoke_cmd(tmp_path: Path):
     (tmp_path / "infer.py").write_text(
         "import torch\nimport torch_npu\n",
@@ -68,6 +87,27 @@ def test_discover_execution_target_preserves_task_smoke_cmd(tmp_path: Path):
     )
     target = json.loads(output.read_text(encoding="utf-8"))
     assert target["task_smoke_cmd"] == "python infer.py --smoke-test"
+
+
+def test_discover_execution_target_records_selected_python(tmp_path: Path):
+    (tmp_path / "infer.py").write_text(
+        "import torch\nimport torch_npu\n",
+        encoding="utf-8",
+    )
+    output = tmp_path / "target.json"
+
+    run_script(
+        "discover_execution_target.py",
+        "--working-dir",
+        str(tmp_path),
+        "--selected-python",
+        sys.executable,
+        "--output-json",
+        str(output),
+    )
+    target = json.loads(output.read_text(encoding="utf-8"))
+    assert target["selected_python"] == sys.executable
+    assert target["selected_python_status"] == "selected"
 
 
 def test_normalize_blockers_maps_categories(tmp_path: Path):
@@ -123,6 +163,7 @@ def test_build_dependency_closure_tracks_required_assets(tmp_path: Path):
                 "target_type": "inference",
                 "entry_script": "infer.py",
                 "framework_path": "pta",
+                "selected_python": sys.executable,
                 "model_path": "model",
                 "config_path": None,
                 "dataset_path": None,
@@ -143,11 +184,8 @@ def test_build_dependency_closure_tracks_required_assets(tmp_path: Path):
     closure = json.loads(closure_path.read_text(encoding="utf-8"))
     assert closure["target_type"] == "inference"
     assert closure["layers"]["framework"]["framework_path"] == "pta"
-    assert closure["layers"]["python_environment"]["probe_source"] in {
-        "current_interpreter",
-        "selected_env",
-        "explicit_python",
-    }
+    assert closure["layers"]["python_environment"]["probe_source"] == "explicit_python"
+    assert closure["layers"]["python_environment"]["probe_python_path"] == sys.executable
     assert "import_probes" in closure["layers"]["framework"]
     assert "torch" in closure["layers"]["runtime_dependencies"]["required_imports"]
     assert "import_probes" in closure["layers"]["runtime_dependencies"]
@@ -214,7 +252,7 @@ else:
     runtime = closure["layers"]["runtime_dependencies"]
 
     assert python_env["selected_env_root"] == str(tmp_path / ".venv")
-    assert python_env["probe_source"] == "selected_env"
+    assert python_env["probe_source"] == "workspace_env"
     assert python_env["probe_python_path"] == str(fake_python)
     assert framework["import_probes"] == {"torch": True, "torch_npu": True}
     assert framework["smoke_prerequisite"]["status"] == "passed"
@@ -379,7 +417,10 @@ def test_collect_readiness_checks_flags_unusable_selected_env(tmp_path: Path):
                             "uv_path": "/usr/bin/uv",
                         },
                         "selected_env_root": str(tmp_path / ".venv"),
-                        "probe_source": "selected_env_missing_python",
+                        "selected_python": None,
+                        "selection_status": "missing",
+                        "selection_reason": "selected environment root does not contain a Python executable",
+                        "probe_source": "explicit_env",
                         "probe_python_path": None,
                     },
                     "framework": {
@@ -389,14 +430,14 @@ def test_collect_readiness_checks_flags_unusable_selected_env(tmp_path: Path):
                             "torch": False,
                             "torch_npu": False,
                         },
-                        "probe_source": "selected_env_missing_python",
+                        "probe_source": "explicit_env",
                     },
                     "runtime_dependencies": {
                         "required_imports": ["transformers"],
                         "import_probes": {
                             "transformers": False,
                         },
-                        "probe_source": "selected_env_missing_python",
+                        "probe_source": "explicit_env",
                     },
                     "workspace_assets": {
                         "entry_script": {"required": True, "exists": True},
@@ -419,8 +460,8 @@ def test_collect_readiness_checks_flags_unusable_selected_env(tmp_path: Path):
     )
     checks = json.loads(checks_path.read_text(encoding="utf-8"))
     by_id = {item["id"]: item for item in checks}
-    assert by_id["python-selected-env"]["status"] == "block"
-    assert by_id["python-selected-env"]["category_hint"] == "env"
+    assert by_id["python-selected-python"]["status"] == "block"
+    assert by_id["python-selected-python"]["category_hint"] == "env"
     assert "selected environment" in by_id["framework-importability"]["summary"].lower()
 
 
@@ -451,7 +492,10 @@ def test_collect_readiness_checks_flags_framework_smoke_failure(tmp_path: Path):
                             "uv_path": "/usr/bin/uv",
                         },
                         "selected_env_root": str(tmp_path / ".venv"),
-                        "probe_source": "selected_env",
+                        "selected_python": str(tmp_path / ".venv" / "bin" / "python"),
+                        "selection_status": "selected",
+                        "selection_reason": "selected python is usable for readiness-agent helpers",
+                        "probe_source": "workspace_env",
                         "probe_python_path": str(tmp_path / ".venv" / "bin" / "python"),
                     },
                     "framework": {
@@ -461,7 +505,7 @@ def test_collect_readiness_checks_flags_framework_smoke_failure(tmp_path: Path):
                             "torch": True,
                             "torch_npu": True,
                         },
-                        "probe_source": "selected_env",
+                        "probe_source": "workspace_env",
                         "smoke_prerequisite": {
                             "status": "failed",
                             "details": [],
@@ -473,7 +517,7 @@ def test_collect_readiness_checks_flags_framework_smoke_failure(tmp_path: Path):
                         "import_probes": {
                             "transformers": True,
                         },
-                        "probe_source": "selected_env",
+                        "probe_source": "workspace_env",
                     },
                     "workspace_assets": {
                         "entry_script": {"required": True, "exists": True},

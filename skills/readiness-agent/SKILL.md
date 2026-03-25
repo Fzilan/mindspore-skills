@@ -28,6 +28,8 @@ Load these references when needed:
 
 Use these helper scripts when needed:
 
+- `scripts/resolve_selected_python.py` for selecting the single workspace
+  Python interpreter that should drive helper execution and target validation
 - `scripts/discover_execution_target.py` for initial execution-target discovery
 - `scripts/build_dependency_closure.py` for target-scoped dependency closure
   construction
@@ -104,32 +106,61 @@ Do not use this skill for:
 - Do not mutate model, dataset, checkpoint, or config files.
 - After every successful mutation, rerun affected checks before final status.
 - You may write readiness artifacts under the workspace output directory.
+- Resolve one selected workspace Python before running the rest of the helper
+  pipeline whenever possible.
+- Once a selected workspace Python is resolved, use it consistently for
+  downstream helper execution, environment probing, and task smoke.
+- Do not silently fall back to system Python when the selected workspace
+  Python is missing or unusable; surface that as an environment blocker or
+  repair it first.
 
 ## Workflow
 
 Run the workflow in this order:
 
-1. `execution-target-discovery`
-2. `dependency-closure-builder`
-3. `task-smoke-precheck` when a safe explicit smoke command exists
-4. `compatibility-validator`
-5. `blocker-classifier`
-6. `env-fix` when allowed and needed
-7. `revalidator-and-report-builder`
+1. `selected-python-resolution`
+2. `execution-target-discovery`
+3. `dependency-closure-builder`
+4. `task-smoke-precheck` when a safe explicit smoke command exists
+5. `compatibility-validator`
+6. `blocker-classifier`
+7. `env-fix` when allowed and needed
+8. `revalidator-and-report-builder`
 
 Do not skip directly to certification or report generation.
 
 Recommended helper order for the current deterministic pipeline:
 
-1. `scripts/discover_execution_target.py`
-2. `scripts/build_dependency_closure.py`
-3. `scripts/run_task_smoke.py` when `task_smoke_cmd` is available
-4. `scripts/collect_readiness_checks.py`
-5. `scripts/normalize_blockers.py`
-6. `scripts/plan_env_fix.py`
-7. `scripts/execute_env_fix.py`
-8. rerun affected checks when `needs_revalidation` is non-empty
-9. `scripts/build_readiness_report.py`
+1. `scripts/resolve_selected_python.py`
+2. `scripts/discover_execution_target.py`
+3. `scripts/build_dependency_closure.py`
+4. `scripts/run_task_smoke.py` when `task_smoke_cmd` is available
+5. `scripts/collect_readiness_checks.py`
+6. `scripts/normalize_blockers.py`
+7. `scripts/plan_env_fix.py`
+8. `scripts/execute_env_fix.py`
+9. rerun affected checks when `needs_revalidation` is non-empty
+10. `scripts/build_readiness_report.py`
+
+## Stage 0. Selected-Python Resolution
+
+Resolve the single workspace Python interpreter before the rest of the
+pipeline.
+
+Prefer this order:
+
+- explicit `selected_python`
+- explicit `selected_env_root`
+- workspace-local virtual environments such as `.venv`, `venv`, `.env`, `env`
+
+The resolved interpreter becomes the default Python for downstream helper
+execution, compatibility probing, and task smoke.
+
+If no selected workspace Python is available:
+
+- do not silently trust system Python as if it represented the target
+- classify the issue as an environment problem, or repair the selected
+  environment first when the workflow allows it
 
 ## Stage 1. Execution-Target Discovery
 
