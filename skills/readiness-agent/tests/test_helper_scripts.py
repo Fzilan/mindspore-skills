@@ -641,7 +641,10 @@ def test_collect_readiness_checks_flags_missing_framework_packages(tmp_path: Pat
                         "tooling": {
                             "uv_available": True,
                             "uv_path": "/usr/bin/uv",
-                        }
+                        },
+                        "selected_env_root": str(tmp_path / ".venv"),
+                        "probe_source": "selected_env",
+                        "probe_python_path": str(tmp_path / ".venv" / "bin" / "python"),
                     },
                     "framework": {
                         "framework_path": "mindspore",
@@ -943,7 +946,12 @@ def test_collect_readiness_checks_flags_unusable_selected_env(tmp_path: Path):
     by_id = {item["id"]: item for item in checks}
     assert by_id["python-selected-python"]["status"] == "block"
     assert by_id["python-selected-python"]["category_hint"] == "env"
-    assert "selected environment" in by_id["framework-importability"]["summary"].lower()
+    assert by_id["python-selected-env"]["status"] == "block"
+    assert by_id["python-selected-env"]["category_hint"] == "env"
+    assert by_id["framework-importability"]["status"] == "warn"
+    assert "do not install framework packages into system python" in by_id["framework-importability"]["summary"].lower()
+    assert by_id["runtime-importability"]["status"] == "warn"
+    assert "do not install runtime packages into system python" in by_id["runtime-importability"]["summary"].lower()
 
 
 def test_collect_readiness_checks_flags_framework_smoke_failure(tmp_path: Path):
@@ -1516,6 +1524,100 @@ def test_build_readiness_report_uses_explicit_evidence_level_override(tmp_path: 
     assert envelope["status"] == "success"
     assert verdict["status"] == "READY"
     assert verdict["evidence_level"] == "task_smoke"
+
+
+def test_build_readiness_report_guides_against_system_python_when_workspace_env_missing(tmp_path: Path):
+    target_path = tmp_path / "target.json"
+    normalized_path = tmp_path / "normalized.json"
+    checks_path = tmp_path / "checks.json"
+    closure_path = tmp_path / "closure.json"
+    report_json = tmp_path / "report.json"
+    report_md = tmp_path / "report.md"
+
+    target_path.write_text(
+        json.dumps(
+            {
+                "target_type": "inference",
+                "entry_script": "inference.py",
+                "framework_path": "pta",
+            }
+        ),
+        encoding="utf-8",
+    )
+    normalized_path.write_text(
+        json.dumps(
+            {
+                "blockers": [
+                    "No usable workspace-local Python environment is available for readiness checks. Do not use system python or pip for remediation."
+                ],
+                "warnings": [],
+                "blockers_detailed": [
+                    {
+                        "id": "python-selected-env",
+                        "category": "env_remediable",
+                        "severity": "high",
+                        "summary": "No usable workspace-local Python environment is available for readiness checks. Do not use system python or pip for remediation.",
+                        "evidence": ["system_python_fallback=forbidden"],
+                        "remediable": True,
+                        "remediation_owner": "readiness-agent",
+                        "revalidation_scope": ["python-environment", "framework"],
+                    }
+                ],
+                "warnings_detailed": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    checks_path.write_text(
+        json.dumps(
+            [
+                {
+                    "id": "python-selected-env",
+                    "status": "block",
+                    "summary": "No usable workspace-local Python environment is available for readiness checks. Do not use system python or pip for remediation.",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    closure_path.write_text(
+        json.dumps(
+            {
+                "layers": {
+                    "python_environment": {
+                        "selected_env_root": None,
+                        "probe_python_path": None,
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    run_script(
+        "build_readiness_report.py",
+        "--target-json",
+        str(target_path),
+        "--normalized-json",
+        str(normalized_path),
+        "--checks-json",
+        str(checks_path),
+        "--closure-json",
+        str(closure_path),
+        "--output-json",
+        str(report_json),
+        "--output-md",
+        str(report_md),
+    )
+    envelope, verdict = load_report_pair(report_json)
+    markdown = report_md.read_text(encoding="utf-8")
+    assert envelope["status"] == "partial"
+    assert verdict["status"] == "BLOCKED"
+    assert "do not use system python or pip" in verdict["next_action"].lower()
+    assert verdict["selected_environment_guidance"]["system_python_allowed"] is False
+    assert "Environment Guidance" in markdown
+    assert "system_python_allowed: `false`" in markdown
+    assert "Do not use system python or pip" in markdown
 
 
 def test_build_readiness_report_downgrades_when_explicit_task_smoke_missing(tmp_path: Path):

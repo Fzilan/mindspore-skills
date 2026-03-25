@@ -324,7 +324,14 @@ def build_execution_target(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Discover an execution target for readiness-agent")
+    parser = argparse.ArgumentParser(
+        description="Discover an execution target for readiness-agent",
+        epilog=(
+            "Internal helper. Prefer the top-level readiness workflow entrypoint instead of "
+            "calling this script directly. Do not substitute system python for a missing "
+            "workspace-local environment."
+        ),
+    )
     parser.add_argument("--working-dir", required=True, help="workspace root")
     parser.add_argument("--target", default="auto", help="training, inference, or auto")
     parser.add_argument("--entry-script", help="explicit entry script path")

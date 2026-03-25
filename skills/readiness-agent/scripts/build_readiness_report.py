@@ -112,6 +112,11 @@ def synthesize_user_result(
         )
     if blockers:
         next_action = "Resolve blockers and rerun readiness."
+        if any(str(item.get("id")) == "python-selected-env" for item in blockers):
+            next_action = (
+                "Create or select a workspace-local Python environment first, then rerun readiness. "
+                "Do not use system python or pip for this target."
+            )
         if any(item.get("category") == "workspace_manual" for item in blockers):
             next_action = "Resolve workspace blockers and rerun readiness."
         return (
@@ -221,7 +226,30 @@ def build_report(
         "revalidated": revalidated,
         "revalidation_required_scopes": revalidation_required,
         "revalidation_covered_scopes": revalidation_covered,
+        "selected_environment_guidance": build_selected_environment_guidance(target, dependency_closure),
     }
+
+
+def build_selected_environment_guidance(target: dict, dependency_closure: dict) -> dict:
+    python_env = dependency_closure.get("layers", {}).get("python_environment", {})
+    selected_env_root = python_env.get("selected_env_root")
+    probe_python_path = python_env.get("probe_python_path")
+    guidance = {
+        "selected_env_root": selected_env_root,
+        "selected_python": probe_python_path,
+        "system_python_allowed": False,
+    }
+    if probe_python_path:
+        guidance["verification_command"] = f"{probe_python_path} <script.py>"
+        guidance["install_command"] = f"uv pip install --python {probe_python_path} <package>"
+    else:
+        guidance["verification_command"] = None
+        guidance["install_command"] = None
+        guidance["message"] = (
+            "Workspace-local Python is unresolved. Do not use system python or pip. "
+            "Create or select a workspace-local environment first."
+        )
+    return guidance
 
 
 def now_utc_iso() -> str:
@@ -301,6 +329,20 @@ def render_markdown(report: dict) -> str:
         for item in report["warnings"]:
             lines.append(f"- {item}")
         lines.append("")
+    guidance = report.get("selected_environment_guidance") or {}
+    lines.extend(["## Environment Guidance", ""])
+    lines.append("- system_python_allowed: `false`")
+    if guidance.get("selected_env_root"):
+        lines.append(f"- selected_env_root: `{guidance['selected_env_root']}`")
+    if guidance.get("selected_python"):
+        lines.append(f"- selected_python: `{guidance['selected_python']}`")
+    if guidance.get("verification_command"):
+        lines.append(f"- verification_command: `{guidance['verification_command']}`")
+    if guidance.get("install_command"):
+        lines.append(f"- install_command: `{guidance['install_command']}`")
+    if guidance.get("message"):
+        lines.append(f"- message: {guidance['message']}")
+    lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
 

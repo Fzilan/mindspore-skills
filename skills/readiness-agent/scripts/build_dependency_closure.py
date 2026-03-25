@@ -173,8 +173,6 @@ def detect_output_path(target: dict, root: Path, entry_script: Optional[Path]) -
             if token in text:
                 return "./outputs"
     return None
-
-
 def run_json_probe_with_python(
     python_path: Path,
     mode: str,
@@ -321,6 +319,7 @@ def build_python_layer(target: dict, root: Path, system_layer: dict) -> dict:
         "python_path": probe_python_path,
         "runtime_env_source": system_layer.get("probe_env_source"),
         "runtime_env_error": system_layer.get("probe_env_error"),
+        "system_python_fallback_allowed": False,
     }
 
 
@@ -480,7 +479,14 @@ def build_dependency_closure(target: dict, root: Path) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Build a dependency closure for readiness-agent")
+    parser = argparse.ArgumentParser(
+        description="Build a dependency closure for readiness-agent",
+        epilog=(
+            "Internal helper. Use the top-level readiness workflow entrypoint instead of "
+            "calling leaf helpers directly. Do not repair system Python when the workspace "
+            "environment is unresolved."
+        ),
+    )
     parser.add_argument("--target-json", required=True, help="path to execution target JSON")
     parser.add_argument("--output-json", required=True, help="path to output dependency closure JSON")
     args = parser.parse_args()

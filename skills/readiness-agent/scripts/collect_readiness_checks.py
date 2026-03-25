@@ -10,6 +10,8 @@ def describe_probe_source(probe_source: Optional[str]) -> str:
         "selected_env": "selected environment",
         "explicit_env": "selected environment",
         "workspace_env": "selected environment",
+        "selected_env_missing_python": "selected environment",
+        "workspace_env_missing": "workspace-local environment",
         "explicit_python": "selected Python interpreter",
     }
     return mapping.get(probe_source or "", "selected Python interpreter")
@@ -82,6 +84,7 @@ def collect_checks(target: dict, closure: dict) -> List[dict]:
     selection_reason = python_env.get("selection_reason")
     probe_source = python_env.get("probe_source")
     probe_python_path = python_env.get("probe_python_path")
+    selected_python_ready = bool(probe_python_path)
 
     if target_type in {"training", "inference"}:
         checks.append(
@@ -222,6 +225,23 @@ def collect_checks(target: dict, closure: dict) -> List[dict]:
                 evidence=evidence or ["selected_python is unresolved"],
             )
         )
+    if not selected_env_root:
+        evidence = ["workspace-local selected environment is unresolved", "system_python_fallback=forbidden"]
+        if python_env.get("selection_source"):
+            evidence.append(f"selection_source={python_env.get('selection_source')}")
+        checks.append(
+            make_check(
+                "python-selected-env",
+                "block",
+                "No usable workspace-local Python environment is available for readiness checks. Do not use system python or pip for remediation.",
+                category_hint="env",
+                severity="high",
+                remediable=True,
+                remediation_owner="readiness-agent",
+                revalidation_scope=["python-environment", "framework"],
+                evidence=evidence,
+            )
+        )
 
     if framework_path in {"mindspore", "pta"}:
         checks.append(
@@ -257,12 +277,23 @@ def collect_checks(target: dict, closure: dict) -> List[dict]:
 
     required_framework = framework_layer.get("required_packages", [])
     framework_probes = framework_layer.get("import_probes", {})
-    framework_probe_source = framework_layer.get("probe_source") or "current_interpreter"
+    framework_probe_source = framework_layer.get("probe_source") or probe_source or "selected_env"
     framework_probe_label = describe_probe_source(framework_probe_source)
     framework_probe_error = framework_layer.get("probe_error")
     framework_smoke = framework_layer.get("smoke_prerequisite") or {}
     missing_framework = [pkg for pkg in required_framework if not framework_probes.get(pkg, False)]
-    if required_framework and not missing_framework:
+    if not selected_python_ready and required_framework:
+        checks.append(
+            make_check(
+                "framework-importability",
+                "warn",
+                "Framework importability is deferred until a workspace-local Python environment is resolved. Do not install framework packages into system Python.",
+                category_hint="env",
+                severity="medium",
+                evidence=[f"required_framework={','.join(required_framework)}", "system_python_fallback=forbidden"],
+            )
+        )
+    elif required_framework and not missing_framework:
         checks.append(
             make_check(
                 "framework-importability",
@@ -292,7 +323,16 @@ def collect_checks(target: dict, closure: dict) -> List[dict]:
     smoke_status = framework_smoke.get("status")
     smoke_details = framework_smoke.get("details") or []
     smoke_error = framework_smoke.get("error")
-    if smoke_status == "passed":
+    if not selected_python_ready and framework_path in {"mindspore", "pta", "mixed"}:
+        checks.append(
+            make_check(
+                "framework-smoke-prerequisite",
+                "skipped",
+                "Framework smoke prerequisite is deferred until a workspace-local Python environment is resolved.",
+                evidence=["system_python_fallback=forbidden"],
+            )
+        )
+    elif smoke_status == "passed":
         checks.append(
             make_check(
                 "framework-smoke-prerequisite",
@@ -328,7 +368,18 @@ def collect_checks(target: dict, closure: dict) -> List[dict]:
         pkg for pkg in required_runtime
         if pkg not in required_framework and not runtime_probes.get(pkg, False)
     ]
-    if required_runtime and not missing_runtime:
+    if not selected_python_ready and required_runtime:
+        checks.append(
+            make_check(
+                "runtime-importability",
+                "warn",
+                "Runtime importability is deferred until a workspace-local Python environment is resolved. Do not install runtime packages into system Python.",
+                category_hint="env",
+                severity="medium",
+                evidence=[f"required_runtime={','.join(required_runtime)}", "system_python_fallback=forbidden"],
+            )
+        )
+    elif required_runtime and not missing_runtime:
         checks.append(
             make_check(
                 "runtime-importability",
@@ -436,7 +487,14 @@ def collect_checks(target: dict, closure: dict) -> List[dict]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Collect deterministic readiness checks from target and closure")
+    parser = argparse.ArgumentParser(
+        description="Collect deterministic readiness checks from target and closure",
+        epilog=(
+            "Internal helper. Use the top-level readiness workflow entrypoint instead of "
+            "calling leaf helpers directly. If the selected workspace environment is unresolved, "
+            "do not use system python or pip as a substitute."
+        ),
+    )
     parser.add_argument("--target-json", required=True, help="path to execution target JSON")
     parser.add_argument("--closure-json", required=True, help="path to dependency closure JSON")
     parser.add_argument("--task-smoke-json", help="optional path to task smoke checks JSON")

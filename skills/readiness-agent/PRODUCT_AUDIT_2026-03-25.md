@@ -16,6 +16,9 @@ Current state:
   compatibility aliases for `--mode`
 - full confidence still requires a full pytest rerun in an environment with
   `pytest` installed and broader real-server regression coverage
+- helper and report behavior now make it explicit that unresolved
+  workspace-local environments must not fall back to system Python or system
+  `pip`
 
 Recommended readiness level:
 

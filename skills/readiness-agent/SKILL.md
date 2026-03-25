@@ -106,6 +106,9 @@ Do not use this skill for:
 - Do not install, uninstall, or modify packages unless the active workflow
   explicitly permits safe user-space remediation.
 - Never modify driver, firmware, CANN, or system Python.
+- Never substitute system `python`, `python3`, or `pip` for a missing
+  workspace-local environment. If the selected environment is unresolved,
+  block or repair the environment first.
 - Do not mutate model, dataset, checkpoint, or config files.
 - After every successful mutation, rerun affected checks before final status.
 - You may write readiness artifacts under the workspace output directory.
@@ -190,6 +193,10 @@ For complete training and inference engineering workspaces, treat
 readiness can remediate it before task execution. Also probe common explicit
 ecosystem imports such as `peft`, `trl`, `evaluate`, and `sentencepiece` when
 workspace code imports them directly.
+
+These helper scripts are internal pipeline stages. External callers should not
+manually chain them and should never treat helper probe failures as a reason
+to install packages into system Python.
 
 ## Stage 1. Execution-Target Discovery
 
