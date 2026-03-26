@@ -43,6 +43,7 @@ Recommended entry mapping:
 - "The run failed, why?" -> `failure-agent`
 - "The run finishes, but the result is wrong." -> `accuracy-agent`
 - "Adapt this paper trick or feature into my current model codebase." -> `algorithm-agent`
+- "Add mHC to this llm model." -> `algorithm-agent`
 - "The run works, but it is slow." -> `performance-agent`
 - "Implement an operator." -> `operator-agent`
 - "Migrate this model or repo to MindSpore." -> `model-agent`
@@ -147,9 +148,17 @@ Core workflow:
 
 What it focuses on:
 - extracting a feature or trick from paper text, released code, or user intent
+- selecting the correct integration route, including specialized packs such as
+  `mhc`, without changing the top-level workflow
 - planning how the change should fit into the current codebase
 - generating the minimal patch and config delta
 - preparing the updated workspace for readiness validation
+
+Important boundary:
+- `algorithm-agent` remains the only top-level user entry for algorithm feature
+  work
+- specialized routes such as `mhc` stay behind the stable
+  four-stage workflow instead of becoming separate public skills
 
 What it does not do:
 - full model migration

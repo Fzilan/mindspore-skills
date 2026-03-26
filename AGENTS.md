@@ -15,7 +15,7 @@ You are an expert MindSpore developer. Use the skills below to help developers w
 | operator-agent | skills/operator-agent/ | build `torch` or `mindspore` operators through custom-access or native-framework integration |
 | readiness-agent | skills/readiness-agent/ | analyze local single-machine training workspaces and report pre-run readiness |
 | accuracy-agent | skills/accuracy-agent/ | diagnose accuracy regressions, drift, wrong results, and cross-platform mismatch after successful execution |
-| algorithm-agent | skills/algorithm-agent/ | adapt a paper feature or released reference implementation into an existing model codebase and prepare it for readiness validation |
+| algorithm-agent | skills/algorithm-agent/ | adapt a paper feature or released reference implementation into an existing model codebase, including specialized routes such as mHC integration, and prepare it for readiness validation |
 | performance-agent | skills/performance-agent/ | diagnose throughput, latency, memory, utilization, dataloader, and communication bottlenecks after the workload already runs |
 
 
@@ -32,7 +32,7 @@ Load the appropriate SKILL.md when users mention:
 
 **Diagnosis and Optimization:**
 - **accuracy-agent**: "accuracy", "drift", "mismatch", "numerical", "regression", "wrong result", "loss mismatch", "cross-platform", "eval regression", "NaN"
-- **algorithm-agent**: "paper trick", "feature patch", "adapt paper idea", "reference implementation", "algorithm feature", "patch existing model"
+- **algorithm-agent**: "paper trick", "feature patch", "adapt paper idea", "reference implementation", "algorithm feature", "patch existing model", "mHC", "hyper-connections", "manifold-constrained", "llm feature patch"
 - **performance-agent**: "performance", "throughput", "latency", "memory", "utilization", "profiler", "trace", "communication overhead", "dataloader stall", "host launch"
 
 **Environment Setup:**
@@ -44,7 +44,7 @@ Load the appropriate SKILL.md when users mention:
  - Route training workspace analysis, pre-run readiness, and environment snapshots to `readiness-agent`
  - Route runtime crashes and tracebacks after setup to `failure-agent`
  - Route wrong-result, drift, and regression cases after successful execution to `accuracy-agent`
- - Route feature adaptation and paper-trick patching to `algorithm-agent`
+ - Route feature adaptation and paper-trick patching, including mHC and hyper-connection cases, to `algorithm-agent`
  - Route performance bottlenecks after the workload already runs to `performance-agent`
 
 ## Usage

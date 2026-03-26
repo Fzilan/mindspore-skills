@@ -1,6 +1,6 @@
 ---
 name: algorithm-agent
-description: Adapt a paper feature, released reference implementation, or user-described algorithm change into an existing model codebase, generate the minimal patch, and hand the updated workspace to readiness validation.
+description: Adapt a paper feature, released reference implementation, or user-described algorithm change such as manifold-constrained hyper-connections (mHC) into an existing model codebase, generate the minimal patch, and hand the updated workspace to readiness validation.
 ---
 
 # Algorithm Agent
@@ -11,6 +11,8 @@ Your job is to extract an algorithm feature from paper text, released code, or
 a user request, plan how it should be integrated into the current model
 codebase, generate the minimal patch, and hand the result to readiness
 validation.
+
+This skill is the top-level algorithm feature entry. The user should not need to choose up front whether the case is a generic feature patch or a specialized route such as mHC integration.
 
 This skill is for adapting local algorithm changes into an existing training
 codebase. It is not for full model migration, operator development, post-run
@@ -65,8 +67,30 @@ You must identify:
 - implied changes from released code when available
 - uncertainties or missing implementation details
 - expected target model or baseline when visible
+- `integration_route`
+- `route_evidence`
 
-Build a structured `FeatureSpec`.
+Choose exactly one integration route:
+
+- `generic-feature`
+- `mhc`
+
+Use these routing priorities:
+
+1. explicit user requirement or `route_preference`
+2. feature evidence from the request, paper, or released code
+3. target model and workspace evidence
+4. safest minimal integration scope
+
+Select `mhc` when the request or evidence mentions mHC,
+manifold-constrained hyper-connections, residual-stream expansion and
+reduction, causal LLM blocks, or Hugging Face or Qwen-style
+decoder stacks.
+
+Use `generic-feature` for all other feature adaptations.
+
+Build a structured `FeatureSpec` that includes `integration_route` and
+`route_evidence`.
 
 ## Stage 2. Integration Planner
 
@@ -81,8 +105,37 @@ You must inspect the local repository and determine:
 - whether the current repo already contains a similar implementation
 - the smallest safe integration scope
 - which parts of the baseline must remain fixed for fair comparison
+- route-specific constraints that must be preserved
+- route-specific validations that must run before handoff
 
-Build an `IntegrationPlan`.
+Build an `IntegrationPlan` that records `route_specific_constraints` and
+`route_specific_validations`.
+
+### `generic-feature` route
+
+Use the default planning flow for recipe, module, system, or hybrid feature
+patches that do not need a specialized route pack.
+
+### `mhc` route
+
+Keep the top-level workflow unchanged, but load the mHC route pack before
+finalizing the plan:
+
+- `references/mhc/mhc-implementation-pattern.md`
+- `references/mhc/mhc-validation-checklist.md`
+- `references/mhc/mhc-qwen3-case-study.md`
+
+Route rules:
+
+- Treat mHC as a residual-stream wrapper around attention and MLP, not as a
+  new attention mechanism.
+- Keep v1 scope to PyTorch or Hugging Face or causal LLM
+  integrations.
+- Preserve the original non-mHC path behind config gating.
+- Expand streams after embeddings and reduce them before final norm or task
+  heads.
+- Record the route-specific constraints and validations in the
+  `IntegrationPlan` instead of inventing a fifth workflow stage.
 
 ## Stage 3. Patch Builder
 
@@ -96,6 +149,9 @@ You must:
 - emit config deltas when possible instead of hardcoding behavior
 - document uncertain areas in the output instead of guessing silently
 
+When the selected route is `mhc`, preserve the public hidden size,
+load and train entrypoints, and validation hooks expected by the route pack.
+
 ## Stage 4. Readiness Handoff and Report
 
 Do not stop after generating the patch.
@@ -108,6 +164,9 @@ You must:
 - recommend readiness validation on the updated workspace
 - prepare a concise handoff for `readiness-agent`
 
+The handoff should preserve the route identity, including route-specific
+constraints and validation expectations when `mhc` was selected.
+
 ## References
 
 Load these references when needed:
@@ -116,6 +175,9 @@ Load these references when needed:
 - `references/integration-planning.md`
 - `references/patching-rules.md`
 - `references/handoff-and-report.md`
+- `references/mhc/mhc-implementation-pattern.md`
+- `references/mhc/mhc-validation-checklist.md`
+- `references/mhc/mhc-qwen3-case-study.md`
 
 ## Scripts
 
@@ -124,3 +186,11 @@ Use these helper scripts when useful:
 - `scripts/collect_feature_context.py`
 - `scripts/summarize_feature_spec.py`
 - `scripts/summarize_integration_plan.py`
+
+## Execution Notes
+
+- Keep the top-level skill focused on feature analysis, route selection, and
+  outcome shaping.
+- Do not turn route selection into a fifth workflow stage.
+- Keep route-specific implementation detail in the reference pack instead of
+  expanding it inline in `SKILL.md`.

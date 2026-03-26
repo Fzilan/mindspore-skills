@@ -106,7 +106,7 @@ See [Codex AGENTS guide](https://developers.openai.com/codex/guides/agents-md) f
 | Skill | Description |
 |-------|-------------|
 | `accuracy-agent` | Diagnose accuracy regressions, drift, wrong results, and cross-platform mismatch after successful execution |
-| `algorithm-agent` | Adapt a paper feature or released reference implementation into an existing model codebase and prepare the patch for readiness validation |
+| `algorithm-agent` | Adapt a paper feature or released reference implementation into an existing model codebase, including specialized routes such as mHC integration, and prepare the patch for readiness validation |
 | `readiness-agent` | Analyze a local single-machine training workspace and validate pre-run readiness before training |
 | `failure-agent` | Diagnose MindSpore and PTA (torch_npu) training and runtime failures with evidence-backed root-cause validation |
 | `performance-agent` | Diagnose throughput, latency, memory, utilization, dataloader, and communication bottlenecks after the workload already runs |
@@ -132,7 +132,7 @@ See [Codex AGENTS guide](https://developers.openai.com/codex/guides/agents-md) f
 | Command | Description |
 |---------|-------------|
 | `/accuracy-agent` | Accuracy diagnosis workflow after successful execution |
-| `/algorithm-agent` | Algorithm feature adaptation workflow with patch generation and readiness handoff |
+| `/algorithm-agent` | Algorithm feature adaptation workflow with patch generation, route-specific planning such as mHC, and readiness handoff |
 | `/readiness-agent` | Single-machine training workspace readiness workflow |
 | `/failure-agent` | Dual-stack failure diagnosis workflow with evidence, root-cause validation, and report output |
 | `/performance-agent` | Performance diagnosis workflow with bottleneck validation and report output |
@@ -150,6 +150,14 @@ See [Codex AGENTS guide](https://developers.openai.com/codex/guides/agents-md) f
 ### Examples
 
 See `examples/README.md` for the current example inventory and status.
+
+Additional example:
+
+```
+/algorithm-agent
+
+> Add manifold-constrained hyper-connections (mHC) to this llm model and keep the non-mHC path unchanged
+```
 
 ## Contract and Tests
 
@@ -176,7 +184,7 @@ mindspore-skills/
 │   ├── operator-agent/      # Framework operator implementation
 │   ├── readiness-agent/     # Training workspace readiness and preflight
 │   ├── accuracy-agent/      # Accuracy diagnosis after successful execution
-│   ├── algorithm-agent/     # Feature adaptation and patch planning for existing models
+│   ├── algorithm-agent/     # Feature adaptation and route-specific patch planning for existing models
 │   ├── failure-agent/       # Training and runtime failure diagnosis
 │   └── performance-agent/   # Performance diagnosis after the workload already runs
 ├── AGENTS.md                # Codex instructions

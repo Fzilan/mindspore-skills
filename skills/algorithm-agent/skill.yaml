@@ -1,6 +1,7 @@
 name: "algorithm-agent"
 display_name: "Algorithm Agent"
-description: "Adapt a paper feature, released reference implementation, or user-described algorithm change into an existing model codebase, generate the minimal patch, and hand the updated workspace to readiness validation."
+description: "Top-level algorithm feature agent that analyzes a feature request or released reference implementation, selects the safest integration route including specialized routes such as mHC integration, plans the minimal patch, and prepares the workspace for readiness validation."
+
 entry:
   type: manual
 inputs:

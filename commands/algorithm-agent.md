@@ -17,3 +17,9 @@ Load the `algorithm-agent` skill and follow its four-stage workflow:
 - released reference code when available
 - target model or baseline
 - local workspace path
+- route preference when the caller already knows the case is `generic-feature` or `mhc`
+
+## Example Prompts
+
+- Adapt this paper trick into my current model codebase.
+- Add mHC to this Hugging Face stack without changing the public hidden size.
