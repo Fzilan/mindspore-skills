@@ -31,7 +31,7 @@ def test_manifest_declares_two_implementation_methods():
 
 def test_skill_describes_four_stage_operator_workflow():
     text = SKILL.read_text(encoding="utf-8")
-    assert "# Op Agent" in text
+    assert "# Operator Agent" in text
     assert "1. `operator-analyzer`" in text
     assert "2. `method-selector`" in text
     assert "3. `implementation-builder`" in text

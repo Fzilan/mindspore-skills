@@ -157,6 +157,19 @@ Expected artifacts may include:
 - wheel
 - minimal validation example
 
+#### Builder lookup
+
+After `native-framework` is selected, first load the framework-specific reference:
+
+- `references/native-framework/torch.md`
+- `references/native-framework/mindspore.md`
+
+When the resolved route is `native-framework -> {framework} -> {backend}`, execute the respective workflow:
+
+e.g. the resolved route is `native-framework -> mindspore -> npu (aclnn)`,
+
+execute the workflow  `workflows/native-framework/mindspore/aclnn.md`
+
 ## Stage 4. Verification and Report
 
 Verify the operator implementation and produce a delivery report.
@@ -183,12 +196,23 @@ The final report must include:
 Load these references when needed:
 
 - `references/operator-spec.md`
+- `references/operator-resolution/api-to-operator.md`
+- `references/operator-resolution/operator-to-backend.md`
 - `references/method-selection.md`
 - `references/verification.md`
 - `references/custom-access/torch.md`
 - `references/custom-access/mindspore.md`
 - `references/native-framework/torch.md`
 - `references/native-framework/mindspore.md`
+
+## Workflows
+
+Load these workflows when the selected route requires execution guidance:
+
+- native-framework -> mindspore -> npu 
+  - `workflows/native-framework/mindspore/aclnn.md`
+
+Others workflows like native-framework -> mindspore -> cpu and other custom-access TBD.
 
 ## Scripts
 
