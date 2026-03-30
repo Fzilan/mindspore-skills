@@ -166,8 +166,8 @@ Recommended helper order for the current deterministic pipeline:
 External callers should prefer `scripts/run_readiness_pipeline.py` instead of
 manually chaining internal helper scripts. The top-level entrypoint accepts:
 
-- `--mode check|fix|auto`
-- compatibility aliases `--check`, `--fix`, and `--auto`
+- `--mode check|fix`
+- compatibility aliases `--check` and `--fix`
 
 Call the top-level entrypoint directly for the real workspace instead of
 probing helper usage with speculative flags first. Treat the current shell path

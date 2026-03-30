@@ -142,7 +142,7 @@ def synthesize_user_result(
             summary = f"{target_type.capitalize()} is blocked because manual workspace inputs are still missing."
         elif has_auto_remediable:
             next_action = (
-                "Repair the selected workspace environment or other remediable target-scoped inputs in fix/auto mode, then rerun readiness."
+                "Repair the selected workspace environment or other remediable target-scoped inputs in fix mode, then rerun readiness."
             )
             summary = f"{target_type.capitalize()} is blocked because remediable target-scoped environment or input issues still remain."
         elif has_unknown:

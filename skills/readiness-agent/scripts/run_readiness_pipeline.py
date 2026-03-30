@@ -38,7 +38,6 @@ VALUE_FLAGS = {
 BOOL_FLAGS = {
     "--check",
     "--fix",
-    "--auto",
     "--allow-network",
     "--verbose",
 }
@@ -180,6 +179,23 @@ def sanitize_cli_args(raw_args: List[str]) -> Tuple[List[str], List[dict]]:
         index += 1
 
     return sanitized, ignored
+
+
+def detect_removed_mode_usage(raw_args: List[str]) -> Optional[str]:
+    index = 0
+    while index < len(raw_args):
+        token = raw_args[index]
+        if token == "--auto":
+            return "auto mode was removed; use --fix for readiness remediation."
+        if token == "--mode":
+            if index + 1 < len(raw_args) and raw_args[index + 1] == "auto":
+                return "mode=auto was removed; use --mode fix for readiness remediation."
+            index += 2
+            continue
+        if token.startswith("--mode=") and token.partition("=")[2] == "auto":
+            return "mode=auto was removed; use --mode fix for readiness remediation."
+        index += 1
+    return None
 
 
 def write_inputs_snapshot(
@@ -571,12 +587,11 @@ def normalize_mode_args(parser: argparse.ArgumentParser, args: argparse.Namespac
         for mode, enabled in (
             ("check", getattr(args, "check", False)),
             ("fix", getattr(args, "fix", False)),
-            ("auto", getattr(args, "auto", False)),
         )
         if enabled
     ]
     if len(alias_modes) > 1:
-        parser.error("use at most one of --check, --fix, or --auto")
+        parser.error("use at most one of --check or --fix")
 
     alias_mode = alias_modes[0] if alias_modes else None
     explicit_mode = args.mode
@@ -592,7 +607,7 @@ def normalize_mode_args(parser: argparse.ArgumentParser, args: argparse.Namespac
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Run the full readiness-agent helper pipeline with optional env re-entry",
+        description="Run the full readiness-agent check or fix pipeline",
         allow_abbrev=False,
     )
     parser.add_argument("--working-dir", help="workspace root (defaults to the current shell path)")
@@ -600,10 +615,9 @@ def main() -> int:
     parser.add_argument("--target", default="auto", help="training, inference, or auto")
     parser.add_argument("--framework-hint", help="explicit framework preference such as mindspore or pta")
     parser.add_argument("--cann-path", help="explicit CANN root or set_env.sh path")
-    parser.add_argument("--mode", choices=("check", "fix", "auto"), help="check, fix, or auto")
+    parser.add_argument("--mode", choices=("check", "fix"), help="check or fix")
     parser.add_argument("--check", action="store_true", help="alias for --mode check")
     parser.add_argument("--fix", action="store_true", help="alias for --mode fix")
-    parser.add_argument("--auto", action="store_true", help="alias for --mode auto")
     parser.add_argument("--verbose", action="store_true", help="accepted for caller compatibility; currently no-op")
     parser.add_argument("--entry-script", help="explicit entry script path")
     parser.add_argument("--selected-python", help="explicit Python interpreter for the workspace")
@@ -622,6 +636,10 @@ def main() -> int:
     parser.add_argument("--path-profile", help="shell profile path for PATH repair")
     parser.add_argument("--timeout-seconds", type=int, default=10, help="timeout for explicit task smoke execution")
     raw_cli_args = sys.argv[1:]
+    removed_mode_error = detect_removed_mode_usage(raw_cli_args)
+    if removed_mode_error:
+        print(json.dumps({"error": removed_mode_error}, indent=2), file=sys.stderr)
+        return 2
     sanitized_cli_args, ignored_cli_args = sanitize_cli_args(raw_cli_args)
     args = parser.parse_args(sanitized_cli_args)
     args.mode = normalize_mode_args(parser, args)
@@ -646,7 +664,10 @@ def main() -> int:
         args.selected_python,
         args.selected_env_root,
     )
-    fix_applied = run_fix_plan_and_execution(args, working_dir, paths, initial_state)
+    if args.mode == "fix":
+        fix_applied = run_fix_plan_and_execution(args, working_dir, paths, initial_state)
+    else:
+        fix_applied = write_default_fix_outputs(paths)
 
     final_state = initial_state
     passes = 1

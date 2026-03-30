@@ -44,8 +44,8 @@ inputs:
     type: "enum"
     required: false
     default: "check"
-    choices: ["check", "fix", "auto"]
-    description: "Execution strategy only. Check validates without mutation, fix enables safe user-space remediation, and auto conditionally repairs remediable blockers before revalidation."
+    choices: ["check", "fix"]
+    description: "Execution strategy only. Check validates without mutation, and fix enables safe user-space remediation."
   - name: "entry_script"
     type: "path"
     required: false

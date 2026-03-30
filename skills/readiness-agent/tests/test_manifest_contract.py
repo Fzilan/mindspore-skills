@@ -30,7 +30,7 @@ def test_manifest_declares_target_and_fix_inputs():
     assert 'choices: ["mindspore", "pta", "mixed", "auto"]' in text
     assert 'name: "cann_path"' in text
     assert 'name: "mode"' in text
-    assert 'choices: ["check", "fix", "auto"]' in text
+    assert 'choices: ["check", "fix"]' in text
     assert 'name: "selected_python"' in text
     assert 'name: "model_hub_id"' in text
     assert 'name: "dataset_hub_id"' in text

@@ -304,7 +304,7 @@ def test_run_readiness_pipeline_records_huggingface_inputs(tmp_path: Path):
     assert target["dataset_split"] == "train"
 
 
-def test_run_readiness_pipeline_auto_creates_default_env_and_reruns(tmp_path: Path, monkeypatch):
+def test_run_readiness_pipeline_fix_creates_default_env_and_reruns(tmp_path: Path, monkeypatch):
     install_fake_uv(tmp_path, monkeypatch)
     workspace = make_workspace(tmp_path)
     output_dir = tmp_path / "out"
@@ -317,7 +317,7 @@ def test_run_readiness_pipeline_auto_creates_default_env_and_reruns(tmp_path: Pa
         str(output_dir),
         "--target",
         "inference",
-        "--auto",
+        "--fix",
         "--model-path",
         "model",
     )
