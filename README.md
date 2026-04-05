@@ -15,11 +15,23 @@ MindSpore Skills can be used in two ways:
 
 ## Demo
 
-**failure-agent** — Diagnose and fix a Qwen3 training crash using the failure-agent skill
+**failure-agent**
+
+> :x: **Problem:** Qwen3 training crashed on Ascend 910B with gradient checkpointing error
+>
+> :keyboard: **Type:** `/fix "training crashed with gradient checkpointing error"`
+>
+> :white_check_mark: **Result:** failure-agent reads the logs, locates the root cause, and applies the fix automatically
 
 <img src="docs/assets/failure_agent.gif" width="720" />
 
-**accuracy-agent** — Detect and resolve accuracy regression during Qwen3 training using the accuracy-agent skill
+**accuracy-agent**
+
+> :x: **Problem:** Qwen3 inference output has precision errors after switching to Ascend
+>
+> :keyboard: **Type:** `/fix "qwen3 infer has accuracy issue, check run_01.log"`
+>
+> :white_check_mark: **Result:** accuracy-agent compares results, traces the numerical drift, and fixes it automatically
 
 <img src="docs/assets/accuracy_agent.gif" width="720" />
 
