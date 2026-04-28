@@ -11,6 +11,7 @@ You are an expert MindSpore developer. Use the skills below to help developers w
 | Skill | Path | Description |
 |-------|------|-------------|
 | api-helper | skills/api-helper/ | find API call chains and operator wiring in MindSpore codebase |
+| hf-transformers-upgrade-agent | skills/hf-transformers-upgrade-agent/ | plan and execute shared-component upgrades of mindone.transformers against a target Hugging Face transformers version |
 | migrate-agent | skills/migrate-agent/ | top-level model migration entry that analyzes source repos, selects the correct migration route, and verifies the result |
 | operator-agent | skills/operator-agent/ | build `torch` or `mindspore` operators through custom-access or native-framework integration |
 | readiness-agent | skills/readiness-agent/ | check whether a local single-machine workspace is ready to train or run inference now, identify what is missing before execution, and optionally apply safe user-space readiness fixes |
@@ -33,6 +34,7 @@ Load the appropriate SKILL.md when users mention:
 **Operator Development:**
 - **operator-agent**: "operator", "custom op", "plugin", "new wheel", "native op", "framework source", "implement operator"
 **Model Migration:**
+- **hf-transformers-upgrade-agent**: "transformers version upgrade", "mindone.transformers upgrade", "shared-component upgrade", "upgrade_data_*.xlsx", "upgrade tracker", "component upgrade runbook", "v4.57.1 to v5.0.0"
 - **migrate-agent**: "migrate", "PyTorch repo", "MindSpore migration", "model migrate", "port repo", "transformers migrate", "diffusers migrate"
 
 **Diagnosis and Optimization:**
@@ -45,6 +47,7 @@ Load the appropriate SKILL.md when users mention:
 
 **Instructions**:
  - Do not give direct answers without following the skill workflow
+ - Route library-level `mindone.transformers` version upgrade planning and execution to `hf-transformers-upgrade-agent`
  - Route operator implementation work to `operator-agent`
  - Route single-machine pre-run training or inference checks, missing-item analysis, and safe user-space readiness fixes to `readiness-agent`; do not use it for post-run crash or traceback diagnosis
  - Route migration-first requests to `migrate-agent`; if the real user goal is "make this model run here", use `migrate-agent` to define the route and runtime requirements, then hand off to `readiness-agent`

@@ -1,0 +1,66 @@
+schema_version: "1.1.0"
+name: "hf-transformers-upgrade-agent"
+display_name: "HF Transformers Upgrade"
+version: "0.1.0"
+description: "Plan and execute a library-level mindone.transformers upgrade against a target Hugging Face transformers version by generating the upgrade spreadsheet, sequencing steps around the minimum runnable path, creating runbooks only when needed, recording execution artifacts, and driving post-upgrade validation."
+type: "manual"
+path: "SKILL.md"
+network: "none"
+filesystem: "workspace-write"
+
+entry:
+  type: manual
+
+inputs:
+  - name: "working_dir"
+    type: string
+    required: false
+    description: Local workspace root containing the mindone and transformers repositories.
+  - name: "source_version"
+    type: string
+    required: false
+    description: Optional source transformers version tag such as v4.57.1. If omitted, detect from mindone.transformers.__version__.
+  - name: "target_version"
+    type: string
+    required: true
+    description: Target transformers version tag such as v5.0.0.
+  - name: "mindone_repo"
+    type: string
+    required: false
+    description: Optional explicit path to the local mindone repository.
+  - name: "transformers_repo"
+    type: string
+    required: false
+    description: Optional explicit path to the local transformers repository.
+  - name: "mode"
+    type: string
+    required: false
+    description: Execution intent for this upgrade workflow.
+    choices: ["plan-only", "execute", "execute-and-validate"]
+
+outputs:
+  - name: "upgrade_plan"
+    type: object
+    description: Spreadsheet path and summarized file-level upgrade classification.
+  - name: "tracker"
+    type: object
+    description: High-level stage tracker and current upgrade state.
+  - name: "runbook_set"
+    type: object
+    description: Runbooks created on demand for major or core medium-refactor steps.
+  - name: "validation_summary"
+    type: object
+    description: Validation, test, and closure summary for the upgrade.
+
+report_schema:
+  upgrade_plan:
+    required_fields: ["source_version", "target_version", "excel_path", "summary"]
+  tracker:
+    required_fields: ["tracker_path", "stage_overview", "current_state"]
+  runbook_set:
+    required_fields: ["runbook_paths", "decision_basis"]
+  validation_summary:
+    required_fields: ["artifacts", "status", "remaining_risks"]
+
+out_dir_layout:
+  notes: "Use upgrade_outputs/ for tracker, runbook, step, validation, and test artifacts. Keep the spreadsheet at the workspace root unless the user asks for a different location."
